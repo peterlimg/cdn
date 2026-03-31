@@ -8,6 +8,7 @@
 - The quota-reached state is a real demo behavior on the request path.
 - The long-term product architecture is expected to move toward Rust edge and Go control-plane services.
 - Nginx is used as temporary ingress and future TLS termination support, while Rust remains the edge runtime that makes request decisions.
+- Redis-backed counters are used for demo rate limiting. Rate-limited requests count toward limit windows, but they do not consume quota bytes.
 
 ## Forbidden claims
 

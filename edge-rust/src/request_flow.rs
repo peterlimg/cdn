@@ -1,3 +1,4 @@
+use crate::counters;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -21,6 +22,8 @@ pub struct DomainRecord {
     pub hostname: String,
     pub origin: String,
     pub status: String,
+    #[serde(rename = "rateLimit")]
+    pub rate_limit: i32,
     #[serde(rename = "activeRevisionId")]
     pub active_revision_id: String,
     #[serde(rename = "appliedRevisionId")]
@@ -35,6 +38,8 @@ pub struct EdgeContext {
     pub quota_used_bytes: i32,
     #[serde(rename = "quotaLimitBytes")]
     pub quota_limit_bytes: i32,
+    #[serde(rename = "rateLimitWindow")]
+    pub rate_limit_window: i32,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -119,6 +124,7 @@ pub async fn evaluate_request(client: &Client, request: RequestBody) -> Result<R
     let trace_id = format!("trace-{}", &Uuid::new_v4().to_string()[..8]);
     let timestamp = chrono_like_timestamp();
     let path = request.path.unwrap_or_else(|| "/assets/demo.css".to_string());
+    let rate_limit = counters::check_rate_limit(client, &context.domain.id, &request_id).await?;
 
     let (cache_status, disposition, bytes_served, quota_used, message) = if context.domain.status != "ready" {
         (
@@ -127,6 +133,18 @@ pub async fn evaluate_request(client: &Client, request: RequestBody) -> Result<R
             0,
             context.quota_used_bytes,
             "Domain is pending setup. Live traffic proof stays blocked until ready.".to_string(),
+        )
+    } else if !rate_limit.0 {
+        (
+            "BLOCKED_RATE_LIMIT".to_string(),
+            "blocked".to_string(),
+            0,
+            context.quota_used_bytes,
+            format!(
+                "Redis-backed rate limit blocked this request after {} requests in the active {} second window.",
+                rate_limit.1,
+                context.rate_limit_window
+            ),
         )
     } else if context.quota_used_bytes >= context.quota_limit_bytes {
         (

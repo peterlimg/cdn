@@ -1,19 +1,31 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
+	"cdn-demo/api-go/internal/limits"
 	"cdn-demo/api-go/internal/state"
+	"github.com/redis/go-redis/v9"
 )
 
 type Server struct {
 	store *state.Store
+	redis *redis.Client
 }
 
 func NewServer(store *state.Store) *Server {
-	return &Server{store: store}
+	redisURL := os.Getenv("REDIS_URL")
+	options, err := redis.ParseURL(redisURL)
+	if err != nil || redisURL == "" {
+		options = &redis.Options{Addr: "127.0.0.1:6379"}
+	}
+	return &Server{store: store, redis: redis.NewClient(options)}
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {
@@ -40,6 +52,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/reset", s.handleReset)
 	mux.HandleFunc("/internal/edge-context", s.handleEdgeContext)
 	mux.HandleFunc("/internal/edge-ingest", s.handleEdgeIngest)
+	mux.HandleFunc("/internal/rate-limit", s.handleRateLimit)
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -161,4 +174,37 @@ func (s *Server) handleEdgeIngest(w http.ResponseWriter, r *http.Request) {
 	}
 	s.store.IngestEdgeEvent(payload)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (s *Server) handleRateLimit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body struct {
+		DomainID  string `json:"domainId"`
+		RequestID string `json:"requestId"`
+	}
+	if err := decode(r, &body); err != nil || body.DomainID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "domainId is required"})
+		return
+	}
+
+	domain, ok := s.store.GetDomain(body.DomainID)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	windowSeconds := limits.DefaultWindowSeconds
+	key := fmt.Sprintf("ratelimit:%s:%d", domain.ID, time.Now().UTC().Unix()/int64(windowSeconds))
+	count, err := s.redis.Incr(ctx, key).Result()
+	if err == nil {
+		_, _ = s.redis.Expire(ctx, key, time.Duration(windowSeconds)*time.Second).Result()
+	}
+	allowed := err != nil || int(count) <= domain.RateLimit
+	writeJSON(w, http.StatusOK, map[string]any{"allowed": allowed, "count": count, "limit": domain.RateLimit, "windowSeconds": windowSeconds})
 }

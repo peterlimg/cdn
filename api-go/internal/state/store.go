@@ -81,6 +81,7 @@ func buildDomain(id, hostname, mode string) DomainRecord {
 		DNSRecords:      buildDNSRecords(hostname),
 		ProxyMode:       "proxied",
 		RouteHint:       "/assets/demo.css",
+		RateLimit:       3,
 	}
 }
 
@@ -99,6 +100,9 @@ func (s *Store) loadPersistedState() {
 		if err := json.Unmarshal(payload, &domain); err != nil {
 			log.Printf("control-plane postgres domain decode failed: %v", err)
 			continue
+		}
+		if domain.RateLimit == 0 {
+			domain.RateLimit = 3
 		}
 		s.domains[domain.ID] = domain
 		if seq := domains.ParseDomainSequence(domain.ID); seq > s.nextDomain {
@@ -235,7 +239,7 @@ func (s *Store) EdgeContext(domainID string) (EdgeContext, bool) {
 		}
 	}
 	s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "config-lookup", TraceID: domainID, DomainID: domainID, Revision: domain.ActiveRevision, Event: "config.lookup", Outcome: "served", Message: "Served edge context to Rust edge service.", Timestamp: now()})
-	return EdgeContext{Domain: domain, QuotaUsedBytes: quotaUsed, QuotaLimitBytes: quotaLimitBytes}, true
+	return EdgeContext{Domain: domain, QuotaUsedBytes: quotaUsed, QuotaLimitBytes: quotaLimitBytes, RateLimitWindow: 60}, true
 }
 
 func (s *Store) IngestEdgeEvent(payload EdgeIngestPayload) {

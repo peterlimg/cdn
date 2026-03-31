@@ -400,7 +400,7 @@ erDiagram
 **Verification:**
 - The system has a credible ingress boundary without relocating request-policy logic out of Rust.
 
-- [ ] **Unit 3: Persist control-plane state in PostgreSQL**
+- [x] **Unit 3: Persist control-plane state in PostgreSQL**
 
 **Goal:** Make Go the durable control-plane authority using PostgreSQL.
 
@@ -434,7 +434,7 @@ erDiagram
 **Verification:**
 - Control-plane truth no longer depends on in-memory Go state.
 
-- [ ] **Unit 4: Add Redis-backed rate limits and fast counters**
+- [x] **Unit 4: Add Redis-backed rate limits and fast counters**
 
 **Goal:** Introduce realistic fast-path enforcement state without moving durable authority out of PostgreSQL.
 

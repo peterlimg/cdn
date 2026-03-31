@@ -6,7 +6,13 @@ export type TruthLabel =
   | "seeded-demo-data"
   | "roadmap-shape"
 
-export type CacheStatus = "BYPASS" | "MISS" | "HIT" | "BLOCKED_QUOTA" | "BLOCKED_PENDING"
+export type CacheStatus =
+  | "BYPASS"
+  | "MISS"
+  | "HIT"
+  | "BLOCKED_QUOTA"
+  | "BLOCKED_PENDING"
+  | "BLOCKED_RATE_LIMIT"
 
 export type ServiceName = "edge" | "api"
 

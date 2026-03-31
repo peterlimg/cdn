@@ -1,3 +1,4 @@
+mod counters;
 mod logging;
 mod request_flow;
 

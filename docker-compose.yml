@@ -1,4 +1,14 @@
 services:
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "6379:6379"
+
   postgres:
     image: postgres:17-alpine
     environment:
@@ -33,9 +43,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       PORT: "4001"
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/cdn_demo?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4001/health"]
       interval: 5s

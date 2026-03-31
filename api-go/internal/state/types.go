@@ -36,6 +36,7 @@ type DomainRecord struct {
 	DNSRecords      []DNSRecord      `json:"dnsRecords"`
 	ProxyMode       string           `json:"proxyMode"`
 	RouteHint       string           `json:"routeHint"`
+	RateLimit       int              `json:"rateLimit"`
 }
 
 type RequestProof struct {
@@ -103,6 +104,7 @@ type EdgeContext struct {
 	Domain          DomainRecord `json:"domain"`
 	QuotaUsedBytes  int          `json:"quotaUsedBytes"`
 	QuotaLimitBytes int          `json:"quotaLimitBytes"`
+	RateLimitWindow int          `json:"rateLimitWindow"`
 }
 
 type EdgeIngestPayload struct {
