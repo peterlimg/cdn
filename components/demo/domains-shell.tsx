@@ -8,21 +8,20 @@ export function DomainsShell({ domains }: { domains: DomainRecord[] }) {
     <div className="grid two-col">
       <section className="card stack">
         <div>
-          <span className="eyebrow">Demo narrative</span>
-          <h2>Walk through onboarding, then switch to live proof.</h2>
+          <span className="eyebrow">Site setup</span>
+          <h2>Create a site, connect an origin, and move into live edge proof.</h2>
           <p className="muted">
-            Create a demo tenant zone, decide whether it is still pending or pre-verified, and then
-            move into the domain detail view to publish the cache policy and drive edge traffic.
+            Each site moves through setup in the detail workspace: origin, DNS or proxy instructions,
+            publish state, request proof, and analytics confirmation.
           </p>
         </div>
 
         <div className="list">
           {domains.length === 0 ? (
             <div className="list-item">
-              <h3>No domains yet</h3>
+              <h3>No sites yet</h3>
               <p className="muted small">
-                Use the domain detail page shortcut below to create either a pre-verified ready
-                domain or a narrated pending-setup fallback state.
+                Start with one site, choose how it gets an origin, and continue setup from the detail page.
               </p>
             </div>
           ) : (
@@ -31,7 +30,8 @@ export function DomainsShell({ domains }: { domains: DomainRecord[] }) {
                 <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     <strong>{domain.hostname}</strong>
-                    <div className="small muted">{domain.origin}</div>
+                    <div className="small muted">{domain.projectName || "Unnamed site"}</div>
+                    <div className="small muted">Origin: {domain.origin}</div>
                     <div className="small muted">Route: {domain.routeHint ?? "/assets/demo.css"}</div>
                   </div>
                   <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
@@ -54,17 +54,17 @@ export function DomainsShell({ domains }: { domains: DomainRecord[] }) {
 
       <section className="card stack">
         <span className="eyebrow">Quick start</span>
-        <h3>Create the first demo zone</h3>
+        <h3>Create the first site</h3>
         <p className="muted small">
-          The client-facing story uses a ready domain for live traffic proof. A pending domain shows
-          the same control-plane sections, but the Rust edge will block traffic until readiness changes.
+          Start with an existing static origin or a simple static origin. If you want the first proof path
+          immediately, choose the ready setup state. If not, keep verification pending and finish setup first.
         </p>
         <div className="row">
-          <Link className="button" href="/domains/new?mode=ready">
-            New ready domain
+          <Link className="button" href="/domains/new?mode=ready&setupPath=existing-origin">
+            Connect existing origin
           </Link>
-          <Link className="button-secondary" href="/domains/new?mode=pending">
-            New pending domain
+          <Link className="button-secondary" href="/domains/new?mode=pending&setupPath=simple-static">
+            Deploy simple static site
           </Link>
         </div>
       </section>

@@ -59,7 +59,15 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
       <div className="grid two-col">
         <DomainConfigSections
           domainId={domain.id}
+          projectName={domain.projectName}
           origin={domain.origin}
+          setupPath={domain.setupPath}
+          setupStage={domain.setupStage}
+          originStatus={domain.originStatus}
+          originValidationMessage={domain.originValidationMessage}
+          lastOriginCheckAt={domain.lastOriginCheckAt}
+          lastOriginCheckOutcome={domain.lastOriginCheckOutcome}
+          dnsStatus={domain.dnsStatus}
           dnsRecords={domain.dnsRecords ?? []}
           proxyMode={domain.proxyMode}
           routeHint={domain.routeHint}

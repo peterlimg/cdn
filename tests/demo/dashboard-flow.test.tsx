@@ -13,7 +13,7 @@ describe("domains dashboard", () => {
 
   it("shows empty-state guidance before any domains exist", () => {
     render(<DomainsShell domains={domains} />)
-    expect(screen.getByText("No domains yet")).toBeInTheDocument()
+    expect(screen.getByText("No sites yet")).toBeInTheDocument()
   })
 
   it("renders the created domain and readiness state", () => {
@@ -21,7 +21,12 @@ describe("domains dashboard", () => {
       {
         id: "zone-1",
         hostname: "ready-demo.northstarcdn.test",
+        projectName: "Marketing site",
         origin: "demo-origin.internal",
+        setupPath: "existing-origin",
+        setupStage: "ready",
+        originStatus: "healthy",
+        dnsStatus: "verified",
         status: "ready",
         readinessNote: "Pre-verified demo domain ready for live traffic proof.",
         truthLabel: "live-proof",
@@ -37,6 +42,7 @@ describe("domains dashboard", () => {
     render(<DomainsShell domains={domains} />)
 
     expect(screen.getByText("ready-demo.northstarcdn.test")).toBeInTheDocument()
-    expect(screen.getByText("Ready for live proof")).toBeInTheDocument()
+    expect(screen.getByText("Ready to activate")).toBeInTheDocument()
+    expect(screen.getByText("Marketing site")).toBeInTheDocument()
   })
 })

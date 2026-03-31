@@ -100,14 +100,23 @@ func (s *Server) handleDomains(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, s.store.ListDomains())
 	case http.MethodPost:
 		var body struct {
-			Hostname string `json:"hostname"`
-			Mode     string `json:"mode"`
+			Hostname    string `json:"hostname"`
+			Mode        string `json:"mode"`
+			ProjectName string `json:"projectName"`
+			Origin      string `json:"origin"`
+			SetupPath   string `json:"setupPath"`
 		}
 		if err := decode(r, &body); err != nil || body.Hostname == "" || (body.Mode != "ready" && body.Mode != "pending") {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "hostname and mode are required"})
 			return
 		}
-		writeJSON(w, http.StatusOK, s.store.CreateDomain(body.Hostname, body.Mode))
+		writeJSON(w, http.StatusOK, s.store.CreateDomain(state.CreateDomainInput{
+			Hostname:    body.Hostname,
+			Mode:        body.Mode,
+			ProjectName: body.ProjectName,
+			Origin:      body.Origin,
+			SetupPath:   body.SetupPath,
+		}))
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -115,12 +124,76 @@ func (s *Server) handleDomains(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDomainByID(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/domains/")
-	domain, ok := s.store.GetDomain(id)
-	if !ok {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
-		return
+	switch r.Method {
+	case http.MethodGet:
+		domain, ok := s.store.GetDomain(id)
+		if !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
+			return
+		}
+		writeJSON(w, http.StatusOK, domain)
+	case http.MethodPatch:
+		var body struct {
+			ProjectName string `json:"projectName"`
+			Origin      string `json:"origin"`
+			SetupPath   string `json:"setupPath"`
+		}
+		if err := decode(r, &body); err != nil || body.Origin == "" || body.SetupPath == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "origin and setupPath are required"})
+			return
+		}
+		domain, ok := s.store.UpdateDomainSetup(id, state.UpdateDomainSetupInput{
+			ProjectName: body.ProjectName,
+			Origin:      body.Origin,
+			SetupPath:   body.SetupPath,
+		})
+		if !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
+			return
+		}
+		if domain.OriginStatus == "failed" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": domain.OriginValidationMessage, "domain": domain})
+			return
+		}
+		writeJSON(w, http.StatusOK, domain)
+	case http.MethodPost:
+		var body struct {
+			Action string `json:"action"`
+		}
+		if err := decode(r, &body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "valid domain action is required"})
+			return
+		}
+
+		var (
+			domain state.DomainRecord
+			ok     bool
+		)
+		switch body.Action {
+		case "verify-dns":
+			domain, ok = s.store.VerifyDomainDNS(id)
+		case "recheck-origin":
+			domain, ok = s.store.RecheckOrigin(id)
+		default:
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "valid domain action is required"})
+			return
+		}
+		if !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
+			return
+		}
+		if body.Action == "verify-dns" && domain.OriginStatus != "healthy" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": domain.OriginValidationMessage, "domain": domain})
+			return
+		}
+		if body.Action == "recheck-origin" && domain.OriginStatus != "healthy" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": domain.OriginValidationMessage, "domain": domain})
+			return
+		}
+		writeJSON(w, http.StatusOK, domain)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
-	writeJSON(w, http.StatusOK, domain)
 }
 
 func (s *Server) handlePolicy(w http.ResponseWriter, r *http.Request) {

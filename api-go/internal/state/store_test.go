@@ -3,6 +3,10 @@ package state
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	analyticsstore "cdn-demo/api-go/internal/analytics"
@@ -51,7 +55,7 @@ func TestAnalyticsFallsBackToLocalSummaryAfterInsertFailure(t *testing.T) {
 		},
 	}
 	store := NewStore(nil, analytics)
-	domain := store.CreateDomain("ready-demo.northstarcdn.test", string(DomainReady))
+	domain := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.northstarcdn.test", Mode: string(DomainReady)})
 
 	err := store.IngestEdgeEvent(EdgeIngestPayload{
 		Proof: RequestProof{
@@ -98,5 +102,149 @@ func TestAnalyticsFallsBackToLocalSummaryAfterInsertFailure(t *testing.T) {
 	}
 	if analytics.queryCalls != 0 {
 		t.Fatalf("expected clickhouse summary query to be skipped after insert failure, got %d calls", analytics.queryCalls)
+	}
+}
+
+func TestUpdateDomainSetupRejectsUnsafeExistingOrigin(t *testing.T) {
+	store := NewStore(nil, nil)
+	domain := store.CreateDomain(CreateDomainInput{
+		Hostname:  "pending-demo.northstarcdn.test",
+		Mode:      string(DomainPending),
+		Origin:    "https://static.example.com",
+		SetupPath: "existing-origin",
+	})
+
+	updated, ok := store.UpdateDomainSetup(domain.ID, UpdateDomainSetupInput{
+		Origin:    "http://127.0.0.1:3000/origin",
+		SetupPath: "existing-origin",
+	})
+	if !ok {
+		t.Fatal("expected domain to exist")
+	}
+	if updated.OriginStatus != "failed" {
+		t.Fatalf("expected failed origin status, got %q", updated.OriginStatus)
+	}
+	if updated.Status != DomainPending {
+		t.Fatalf("expected pending status, got %q", updated.Status)
+	}
+	if updated.DNSStatus != "pending" {
+		t.Fatalf("expected pending dns status, got %q", updated.DNSStatus)
+	}
+	if updated.OriginValidationMessage == "" {
+		t.Fatal("expected origin validation message")
+	}
+
+	verified, ok := store.VerifyDomainDNS(domain.ID)
+	if !ok {
+		t.Fatal("expected domain to exist during dns verification")
+	}
+	if verified.Status != DomainPending {
+		t.Fatalf("expected dns verification to keep pending status, got %q", verified.Status)
+	}
+	if verified.DNSStatus != "pending" {
+		t.Fatalf("expected dns verification to stay pending, got %q", verified.DNSStatus)
+	}
+}
+
+func TestVerifyDomainDNSPromotesHealthyOrigin(t *testing.T) {
+	store := NewStore(nil, nil)
+	originServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/assets/demo.css" {
+			http.NotFound(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer originServer.Close()
+	parsedURL, err := url.Parse(originServer.URL)
+	if err != nil {
+		t.Fatalf("parse origin server url: %v", err)
+	}
+	publicishOrigin := fmt.Sprintf("http://127.0.0.1.nip.io:%s", parsedURL.Port())
+
+	domain := store.CreateDomain(CreateDomainInput{
+		Hostname:  "pending-demo.northstarcdn.test",
+		Mode:      string(DomainPending),
+		Origin:    publicishOrigin,
+		SetupPath: "existing-origin",
+	})
+
+	updated, ok := store.UpdateDomainSetup(domain.ID, UpdateDomainSetupInput{
+		Origin:    publicishOrigin,
+		SetupPath: "existing-origin",
+	})
+	if !ok {
+		t.Fatal("expected domain to exist")
+	}
+	if updated.OriginStatus != "healthy" {
+		t.Fatalf("expected healthy origin status, got %q", updated.OriginStatus)
+	}
+	if updated.LastOriginCheckAt == "" {
+		t.Fatal("expected last origin check timestamp after setup update")
+	}
+	if updated.LastOriginCheckOutcome != "healthy" {
+		t.Fatalf("expected healthy last origin check outcome, got %q", updated.LastOriginCheckOutcome)
+	}
+
+	verified, ok := store.VerifyDomainDNS(domain.ID)
+	if !ok {
+		t.Fatal("expected domain to exist during dns verification")
+	}
+	if verified.Status != DomainReady {
+		t.Fatalf("expected ready status after dns verification, got %q", verified.Status)
+	}
+	if verified.DNSStatus != "verified" {
+		t.Fatalf("expected verified dns status, got %q", verified.DNSStatus)
+	}
+	if verified.SetupStage != "ready" {
+		t.Fatalf("expected ready setup stage, got %q", verified.SetupStage)
+	}
+}
+
+func TestUpdateDomainSetupFailsWhenOriginIsUnreachable(t *testing.T) {
+	store := NewStore(nil, nil)
+	domain := store.CreateDomain(CreateDomainInput{
+		Hostname:  "pending-demo.northstarcdn.test",
+		Mode:      string(DomainPending),
+		Origin:    "https://static.example.com",
+		SetupPath: "existing-origin",
+	})
+
+	updated, ok := store.UpdateDomainSetup(domain.ID, UpdateDomainSetupInput{
+		Origin:    "https://127.0.0.1.nip.io:9",
+		SetupPath: "existing-origin",
+	})
+	if !ok {
+		t.Fatal("expected domain to exist")
+	}
+	if updated.OriginStatus != "failed" {
+		t.Fatalf("expected failed origin status, got %q", updated.OriginStatus)
+	}
+	if updated.OriginValidationMessage != "Origin did not respond to the health check path." {
+		t.Fatalf("unexpected origin validation message: %q", updated.OriginValidationMessage)
+	}
+}
+
+func TestRecheckOriginRevalidatesStoredOrigin(t *testing.T) {
+	store := NewStore(nil, nil)
+	domain := store.CreateDomain(CreateDomainInput{
+		Hostname:  "pending-demo.northstarcdn.test",
+		Mode:      string(DomainPending),
+		Origin:    "https://static.example.com",
+		SetupPath: "existing-origin",
+	})
+
+	rechecked, ok := store.RecheckOrigin(domain.ID)
+	if !ok {
+		t.Fatal("expected domain to exist")
+	}
+	if rechecked.OriginStatus != "failed" {
+		t.Fatalf("expected failed origin status, got %q", rechecked.OriginStatus)
+	}
+	if rechecked.OriginValidationMessage == "" {
+		t.Fatal("expected origin validation message after recheck")
+	}
+	if rechecked.LastOriginCheckAt == "" {
+		t.Fatal("expected last origin check timestamp after recheck")
 	}
 }

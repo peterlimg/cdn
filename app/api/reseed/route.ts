@@ -4,6 +4,9 @@ import { DEMO_RESET_TOKEN, GO_API_URL } from "../../../lib/demo/service-endpoint
 type ReseedBody = {
   hostname?: string
   mode?: "ready" | "pending"
+  projectName?: string
+  origin?: string
+  setupPath?: "existing-origin" | "simple-static" | "demo-static"
 }
 
 const defaultHostnames = {
@@ -36,7 +39,13 @@ export async function POST(request: Request) {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ hostname, mode }),
+    body: JSON.stringify({
+      hostname,
+      mode,
+      projectName: body.projectName,
+      origin: body.origin,
+      setupPath: body.setupPath,
+    }),
     cache: "no-store",
   })
 

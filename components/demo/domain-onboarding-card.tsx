@@ -3,12 +3,18 @@ import { DomainReadinessBadge } from "./domain-readiness-badge"
 import type { DomainRecord } from "../../services/shared/src/types"
 
 export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
+  const setupHeading = domain.status === "ready" ? "This site can move into activation and proof" : "This site still has setup work before live traffic"
+  const setupBody = domain.status === "ready"
+    ? "Origin, DNS shape, and initial activation state are configured well enough to publish a revision and drive live request proof."
+    : "The site record exists and setup sections are visible, but request proof remains blocked until readiness changes to ready."
+
   return (
     <div className="card stack">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <span className="eyebrow">Onboarding</span>
+          <span className="eyebrow">Site setup</span>
           <h2>{domain.hostname}</h2>
+          <div className="small muted">{domain.projectName || "Unnamed site"}</div>
         </div>
         <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
       </div>
@@ -17,26 +23,26 @@ export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
 
       <div className="list-item stack">
         <div>
-          <span className="eyebrow">Readiness contract</span>
-          <h4>{domain.status === "ready" ? "Ready domains can enter the live proof path" : "Pending domains stay blocked by design"}</h4>
+          <span className="eyebrow">Setup contract</span>
+          <h4>{setupHeading}</h4>
         </div>
-        <div className="small muted">
-          {domain.status === "ready"
-            ? "This domain record is ready to route through Nginx into the Rust edge, so it can produce live proof, service logs, and analytics confirmation."
-            : "This domain record shows the same control-plane shape as a live zone, but Rust intentionally blocks traffic until readiness changes to ready."}
-        </div>
+        <div className="small muted">{setupBody}</div>
       </div>
 
       <div className="list-item stack">
         <div>
-          <span className="eyebrow">Presenter guidance</span>
-          <h4>What to say here</h4>
+          <span className="eyebrow">Current setup</span>
+          <h4>{domain.setupPath === "existing-origin" ? "Existing origin connected" : domain.setupPath === "simple-static" ? "Simple static origin path" : "Demo static origin path"}</h4>
         </div>
         <div className="small muted">
-          {domain.status === "ready"
-            ? "Call out that the buyer is looking at a real control-plane record whose readiness mode allows immediate edge proof in the demo."
-            : "Call out that onboarding shape is real, but the product is honestly showing a non-live state instead of pretending verification already happened."}
+          Origin status: {domain.originStatus || "pending"}. DNS status: {domain.dnsStatus || "pending"}. Setup stage: {domain.setupStage || "created"}.
         </div>
+        {domain.lastOriginCheckAt ? (
+          <div className="small muted">
+            Last origin check: {domain.lastOriginCheckOutcome || domain.originStatus || "pending"} at {domain.lastOriginCheckAt}
+          </div>
+        ) : null}
+        {domain.originValidationMessage ? <div className="small muted">{domain.originValidationMessage}</div> : null}
       </div>
     </div>
   )

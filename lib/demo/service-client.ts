@@ -39,11 +39,46 @@ export async function fetchDomain(domainId: string): Promise<DomainRecord | null
   return parseJson<DomainRecord>(response)
 }
 
-export async function createDomain(input: { hostname: string; mode: "ready" | "pending" }) {
+export async function createDomain(input: {
+  hostname: string
+  mode: "ready" | "pending"
+  projectName?: string
+  origin?: string
+  setupPath?: "existing-origin" | "simple-static" | "demo-static"
+}) {
   const response = await fetch(`${GO_API_URL}/domains`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
+    cache: "no-store",
+  })
+
+  return parseJson<DomainRecord>(response)
+}
+
+export async function updateDomainSetup(
+  domainId: string,
+  input: {
+    projectName?: string
+    origin: string
+    setupPath: "existing-origin" | "simple-static" | "demo-static"
+  },
+) {
+  const response = await fetch(`${GO_API_URL}/domains/${domainId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    cache: "no-store",
+  })
+
+  return parseJson<DomainRecord>(response)
+}
+
+export async function verifyDomainDns(domainId: string) {
+  const response = await fetch(`${GO_API_URL}/domains/${domainId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "verify-dns" }),
     cache: "no-store",
   })
 

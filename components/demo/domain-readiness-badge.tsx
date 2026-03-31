@@ -8,9 +8,11 @@ export function DomainReadinessBadge({
   status: DomainStatus
   truthLabel: TruthLabel
 }) {
+  const copy = status === "ready" ? "Ready to activate" : "Setup in progress"
+
   return (
     <div className={`badge ${status === "ready" ? "ready" : "pending"}`}>
-      <span>{status === "ready" ? "Ready for live proof" : "Pending setup"}</span>
+      <span>{copy}</span>
       <span className="small muted">{truthLabel}</span>
     </div>
   )

@@ -1,7 +1,8 @@
 import React from "react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { ZoneDetailShell } from "../../../components/demo/zone-detail-shell"
+import { getSession } from "../../../lib/auth/session"
 import { fetchDashboardSnapshot, fetchDomain, fetchLogs } from "../../../lib/demo/service-client"
 
 export default async function DomainDetailPage({
@@ -9,6 +10,11 @@ export default async function DomainDetailPage({
 }: {
   params: Promise<{ domainId: string }>
 }) {
+  const session = await getSession()
+  if (!session) {
+    redirect("/login")
+  }
+
   const { domainId } = await params
   const domainRecord = await fetchDomain(domainId)
 

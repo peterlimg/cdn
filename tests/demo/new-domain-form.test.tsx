@@ -23,7 +23,7 @@ describe("new domain form", () => {
     render(<NewDomainForm />)
 
     const hostname = screen.getByLabelText("Hostname")
-    const mode = screen.getByLabelText("Readiness mode")
+    const mode = screen.getByLabelText("Initial verification state")
 
     fireEvent.change(hostname, { target: { value: "custom-demo.example.test" } })
     fireEvent.change(mode, { target: { value: "pending" } })
@@ -34,8 +34,24 @@ describe("new domain form", () => {
   it("uses the default hostname when the form has not been customized", () => {
     render(<NewDomainForm />)
 
-    fireEvent.change(screen.getByLabelText("Readiness mode"), { target: { value: "pending" } })
+    fireEvent.change(screen.getByLabelText("Initial verification state"), { target: { value: "pending" } })
 
     expect(screen.getByDisplayValue("pending-demo.northstarcdn.test")).toBeInTheDocument()
+  })
+
+  it("switches the origin placeholder value when the setup path changes", () => {
+    render(<NewDomainForm />)
+
+    fireEvent.change(screen.getByLabelText("Origin path"), { target: { value: "simple-static" } })
+
+    expect(screen.getByDisplayValue("http://127.0.0.1:3000/origin")).toBeInTheDocument()
+  })
+
+  it("renders project and origin fields for real site setup", () => {
+    render(<NewDomainForm />)
+
+    expect(screen.getByLabelText("Project name")).toBeInTheDocument()
+    expect(screen.getByLabelText("Origin URL")).toBeInTheDocument()
+    expect(screen.getByText("Create site and continue setup")).toBeInTheDocument()
   })
 })

@@ -21,3 +21,4 @@ pnpm-debug.log*
 # Local runtime artifacts
 *.log
 tmp/
+.zed/settings.json

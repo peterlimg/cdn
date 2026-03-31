@@ -6,7 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -106,24 +110,146 @@ func buildDNSRecords(hostname string) []DNSRecord {
 	}
 }
 
-func buildDomain(id, hostname, mode string) DomainRecord {
+func validateOrigin(origin string, setupPath string) (string, string) {
+	trimmed := strings.TrimSpace(origin)
+	if trimmed == "" {
+		return "failed", "Enter an origin URL before continuing setup."
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return "failed", "Origin must be a valid absolute URL."
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "failed", "Origin must use http or https."
+	}
+
+	host := parsed.Hostname()
+	if host == "" {
+		return "failed", "Origin host is required."
+	}
+	if setupPath != "demo-static" {
+		if strings.EqualFold(host, "localhost") {
+			return "failed", "Localhost origins are only allowed for the demo static path."
+		}
+		ip := net.ParseIP(host)
+		if ip != nil {
+			if ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() {
+				return "failed", "Private-network origins are only allowed for the demo static path."
+			}
+		}
+	}
+
+	return "healthy", "Origin format looks valid for CDN routing."
+}
+
+func probeOrigin(origin string) (string, string) {
+	client := &http.Client{Timeout: 2 * time.Second}
+	probeURL := strings.TrimRight(origin, "/")
+	if !strings.HasSuffix(probeURL, "/assets/demo.css") {
+		probeURL += "/assets/demo.css"
+	}
+	request, err := http.NewRequest(http.MethodGet, probeURL, nil)
+	if err != nil {
+		return "failed", "Origin health check could not be prepared."
+	}
+	request.Header.Set("X-Request-Id", "origin-health-check")
+
+	response, err := client.Do(request)
+	if err != nil {
+		return "failed", "Origin did not respond to the health check path."
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return "failed", fmt.Sprintf("Origin health check returned HTTP %d.", response.StatusCode)
+	}
+
+	return "healthy", fmt.Sprintf("Origin responded successfully on /assets/demo.css with HTTP %d.", response.StatusCode)
+}
+
+func applySetupState(domain DomainRecord, validationMode string, shouldProbe bool, recordCheck bool) DomainRecord {
+	originStatus, originMessage := validateOrigin(domain.Origin, domain.SetupPath)
+	if originStatus == "healthy" && shouldProbe {
+		originStatus, originMessage = probeOrigin(domain.Origin)
+	}
+	domain.OriginStatus = originStatus
+	domain.OriginValidationMessage = originMessage
+	if recordCheck {
+		domain.LastOriginCheckAt = now()
+		domain.LastOriginCheckOutcome = originStatus
+	}
+
+	if originStatus == "failed" {
+		domain.Status = DomainPending
+		domain.DNSStatus = "pending"
+		domain.SetupStage = "created"
+		domain.ReadinessNote = originMessage
+		domain.TruthLabel = "roadmap-shape"
+		return domain
+	}
+
+	if domain.DNSStatus == "verified" && validationMode == string(DomainReady) {
+		domain.Status = DomainReady
+		domain.SetupStage = "ready"
+		domain.ReadinessNote = "Origin, DNS, and activation state are aligned for live request proof."
+		domain.TruthLabel = "live-proof"
+		return domain
+	}
+
+	domain.Status = DomainPending
+	domain.DNSStatus = "pending"
+	domain.SetupStage = "origin-configured"
+	domain.ReadinessNote = "Origin is configured, but DNS verification is still required before live traffic can reach the edge."
+	domain.TruthLabel = "seeded-demo-data"
+	return domain
+}
+
+type CreateDomainInput struct {
+	Hostname    string
+	Mode        string
+	ProjectName string
+	Origin      string
+	SetupPath   string
+}
+
+type UpdateDomainSetupInput struct {
+	ProjectName string
+	Origin      string
+	SetupPath   string
+}
+
+func buildDomain(id string, input CreateDomainInput) DomainRecord {
 	baseline := baselineRevision()
-	ready := mode == string(DomainReady)
-	return DomainRecord{
+	origin := input.Origin
+	if origin == "" {
+		origin = demoOriginURL()
+	}
+	setupPath := input.SetupPath
+	if setupPath == "" {
+		setupPath = "demo-static"
+	}
+	dnsStatus := "pending"
+	if input.Mode == string(DomainReady) {
+		dnsStatus = "verified"
+	}
+	domain := DomainRecord{
 		ID:              id,
-		Hostname:        hostname,
-		Origin:          demoOriginURL(),
-		Status:          DomainStatus(mode),
-		ReadinessNote:   map[bool]string{true: "Pre-verified demo domain ready for live traffic proof.", false: "Onboarding records are configured but live traffic stays blocked in pending mode."}[ready],
-		TruthLabel:      map[bool]string{true: "live-proof", false: "seeded-demo-data"}[ready],
+		Hostname:        input.Hostname,
+		ProjectName:     input.ProjectName,
+		Origin:          origin,
+		SetupPath:       setupPath,
+		DNSStatus:       dnsStatus,
 		ActiveRevision:  baseline.ID,
 		AppliedRevision: baseline.ID,
 		Revisions:       []PolicyRevision{baseline},
-		DNSRecords:      buildDNSRecords(hostname),
+		DNSRecords:      buildDNSRecords(input.Hostname),
 		ProxyMode:       "proxied",
 		RouteHint:       "/assets/demo.css",
 		RateLimit:       defaultRateLimit,
 	}
+	shouldProbe := input.Origin != ""
+	return applySetupState(domain, input.Mode, shouldProbe, shouldProbe)
 }
 
 func demoOriginURL() string {
@@ -213,16 +339,97 @@ func formatLogID(sequence int) string {
 	return fmt.Sprintf("log-%06d", sequence)
 }
 
-func (s *Store) CreateDomain(hostname string, mode string) DomainRecord {
+func (s *Store) CreateDomain(input CreateDomainInput) DomainRecord {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	domain := buildDomain(s.nextDomainID(), hostname, mode)
+	domain := buildDomain(s.nextDomainID(), input)
 	s.domains[domain.ID] = domain
 	s.persistDomainLocked(domain)
 	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "domain-create", TraceID: domain.ID, DomainID: domain.ID, Revision: domain.ActiveRevision, Event: "domain.create", Outcome: "stored", Message: "Domain created in Go control service.", Timestamp: now()}); err != nil {
 		log.Printf("control-plane log persist failed: %v", err)
 	}
 	return domain
+}
+
+func (s *Store) UpdateDomainSetup(domainID string, input UpdateDomainSetupInput) (DomainRecord, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	domain, ok := s.domains[domainID]
+	if !ok {
+		return DomainRecord{}, false
+	}
+
+	if input.ProjectName != "" {
+		domain.ProjectName = input.ProjectName
+	}
+	if input.Origin != "" {
+		domain.Origin = input.Origin
+	}
+	if input.SetupPath != "" {
+		domain.SetupPath = input.SetupPath
+	}
+
+	validationMode := string(domain.Status)
+	if domain.DNSStatus == "verified" {
+		validationMode = string(DomainReady)
+	}
+	domain = applySetupState(domain, validationMode, true, true)
+
+	s.domains[domainID] = domain
+	s.persistDomainLocked(domain)
+	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "domain-setup-update", TraceID: domainID, DomainID: domainID, Revision: domain.ActiveRevision, Event: "domain.setup.update", Outcome: "stored", Message: "Updated site setup details in Go control service.", Timestamp: now()}); err != nil {
+		log.Printf("control-plane log persist failed: %v", err)
+	}
+	return domain, true
+}
+
+func (s *Store) VerifyDomainDNS(domainID string) (DomainRecord, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	domain, ok := s.domains[domainID]
+	if !ok {
+		return DomainRecord{}, false
+	}
+
+	if domain.OriginStatus != "healthy" {
+		if domain.OriginValidationMessage == "" {
+			domain.OriginValidationMessage = "Origin validation must succeed before DNS can be marked verified."
+		}
+		s.domains[domainID] = domain
+		return domain, true
+	}
+
+	domain.DNSStatus = "verified"
+	domain = applySetupState(domain, string(DomainReady), true, false)
+
+	s.domains[domainID] = domain
+	s.persistDomainLocked(domain)
+	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "domain-dns-verify", TraceID: domainID, DomainID: domainID, Revision: domain.ActiveRevision, Event: "domain.dns.verify", Outcome: "verified", Message: "Marked DNS setup as verified for this site.", Timestamp: now()}); err != nil {
+		log.Printf("control-plane log persist failed: %v", err)
+	}
+	return domain, true
+}
+
+func (s *Store) RecheckOrigin(domainID string) (DomainRecord, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	domain, ok := s.domains[domainID]
+	if !ok {
+		return DomainRecord{}, false
+	}
+
+	validationMode := string(domain.Status)
+	if domain.DNSStatus == "verified" {
+		validationMode = string(DomainReady)
+	}
+	domain = applySetupState(domain, validationMode, true, true)
+
+	s.domains[domainID] = domain
+	s.persistDomainLocked(domain)
+	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "domain-origin-recheck", TraceID: domainID, DomainID: domainID, Revision: domain.ActiveRevision, Event: "domain.origin.recheck", Outcome: domain.OriginStatus, Message: domain.OriginValidationMessage, Timestamp: now()}); err != nil {
+		log.Printf("control-plane log persist failed: %v", err)
+	}
+	return domain, true
 }
 
 func (s *Store) ListDomains() []DomainRecord {

@@ -1,5 +1,16 @@
 export type DomainStatus = "pending" | "ready"
 
+export type SetupPath = "existing-origin" | "simple-static" | "demo-static"
+
+export type SetupStage =
+  | "created"
+  | "origin-configured"
+  | "dns-pending"
+  | "verifying"
+  | "ready"
+
+export type OriginStatus = "pending" | "healthy" | "failed"
+
 export type TruthLabel =
   | "live-proof"
   | "derived-with-lag"
@@ -37,7 +48,15 @@ export type DNSRecord = {
 export type DomainRecord = {
   id: string
   hostname: string
+  projectName?: string
   origin: string
+  originValidationMessage?: string
+  lastOriginCheckAt?: string
+  lastOriginCheckOutcome?: OriginStatus
+  setupPath?: SetupPath
+  setupStage?: SetupStage
+  originStatus?: OriginStatus
+  dnsStatus?: "pending" | "verified"
   status: DomainStatus
   readinessNote: string
   truthLabel: TruthLabel

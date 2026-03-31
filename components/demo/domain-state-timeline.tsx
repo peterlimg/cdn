@@ -4,18 +4,18 @@ import type { DomainStatus } from "../../services/shared/src/types"
 const states: Array<{ id: DomainStatus | "blocked"; label: string; description: string }> = [
   {
     id: "pending",
-    label: "Pending setup",
-    description: "DNS and verification are visible, but live traffic stays blocked.",
+    label: "Setup in progress",
+    description: "The site record exists, but verification or activation work is still incomplete.",
   },
   {
     id: "ready",
-    label: "Ready for live proof",
-    description: "Rust edge is allowed to serve the demo route for this domain.",
+    label: "Ready to activate",
+    description: "The edge can serve the configured route and produce live request proof for this site.",
   },
   {
     id: "blocked",
-    label: "Blocked by plan state",
-    description: "Quota or readiness rules stop the request even if the domain is configured.",
+    label: "Blocked on request path",
+    description: "Quota or readiness rules can still stop requests even after setup is visible in the UI.",
   },
 ]
 
@@ -23,8 +23,8 @@ export function DomainStateTimeline({ status }: { status: DomainStatus }) {
   return (
     <div className="card stack">
       <div>
-        <span className="eyebrow">State model</span>
-        <h3>What each domain state means</h3>
+        <span className="eyebrow">Setup state</span>
+        <h3>What each site state means</h3>
       </div>
       <div className="list">
         {states.map((item) => (

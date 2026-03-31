@@ -24,19 +24,27 @@ type DNSRecord struct {
 }
 
 type DomainRecord struct {
-	ID              string           `json:"id"`
-	Hostname        string           `json:"hostname"`
-	Origin          string           `json:"origin"`
-	Status          DomainStatus     `json:"status"`
-	ReadinessNote   string           `json:"readinessNote"`
-	TruthLabel      string           `json:"truthLabel"`
-	ActiveRevision  string           `json:"activeRevisionId"`
-	AppliedRevision string           `json:"appliedRevisionId"`
-	Revisions       []PolicyRevision `json:"revisions"`
-	DNSRecords      []DNSRecord      `json:"dnsRecords"`
-	ProxyMode       string           `json:"proxyMode"`
-	RouteHint       string           `json:"routeHint"`
-	RateLimit       int              `json:"rateLimit"`
+	ID                      string           `json:"id"`
+	Hostname                string           `json:"hostname"`
+	ProjectName             string           `json:"projectName,omitempty"`
+	Origin                  string           `json:"origin"`
+	OriginValidationMessage string           `json:"originValidationMessage,omitempty"`
+	LastOriginCheckAt       string           `json:"lastOriginCheckAt,omitempty"`
+	LastOriginCheckOutcome  string           `json:"lastOriginCheckOutcome,omitempty"`
+	SetupPath               string           `json:"setupPath,omitempty"`
+	SetupStage              string           `json:"setupStage,omitempty"`
+	OriginStatus            string           `json:"originStatus,omitempty"`
+	DNSStatus               string           `json:"dnsStatus,omitempty"`
+	Status                  DomainStatus     `json:"status"`
+	ReadinessNote           string           `json:"readinessNote"`
+	TruthLabel              string           `json:"truthLabel"`
+	ActiveRevision          string           `json:"activeRevisionId"`
+	AppliedRevision         string           `json:"appliedRevisionId"`
+	Revisions               []PolicyRevision `json:"revisions"`
+	DNSRecords              []DNSRecord      `json:"dnsRecords"`
+	ProxyMode               string           `json:"proxyMode"`
+	RouteHint               string           `json:"routeHint"`
+	RateLimit               int              `json:"rateLimit"`
 }
 
 type RequestProof struct {
