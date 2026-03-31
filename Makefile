@@ -14,7 +14,7 @@ COMPOSE := env DEMO_RESET_TOKEN=$(DEMO_RESET_TOKEN) INTERNAL_API_TOKEN=$(INTERNA
 
 # --- Docker Compose full stack ---
 
-up: ## Start full stack via Docker Compose (requires DEMO_RESET_TOKEN + INTERNAL_API_TOKEN env vars)
+up: ## Start full stack via Docker Compose in detached mode
 	$(COMPOSE) up -d
 
 up-full: up ## Alias for up
@@ -22,10 +22,8 @@ up-full: up ## Alias for up
 build: ## Build all service images (no start)
 	$(COMPOSE) build
 
-up-dev: ## Start backing services (postgres, redis, clickhouse) then run UI dev server
-	$(COMPOSE) up postgres redis clickhouse -d
-	npm install
-	npm run dev
+up-dev: ## Start full stack via Docker Compose in foreground with build output
+	$(COMPOSE) up --build
 
 down: ## Stop all containers
 	$(COMPOSE) down
