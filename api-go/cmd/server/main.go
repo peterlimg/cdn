@@ -19,7 +19,7 @@ func main() {
 	addr := ":" + port
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		databaseURL = "postgres://postgres:postgres@127.0.0.1:5432/cdn_demo?sslmode=disable"
+		databaseURL = "postgres://postgres:postgres@127.0.0.1:5433/cdn_demo?sslmode=disable"
 	}
 
 	client, err := db.Open(databaseURL)

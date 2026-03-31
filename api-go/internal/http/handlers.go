@@ -25,9 +25,13 @@ func NewServer(store *state.Store) *Server {
 	redisURL := os.Getenv("REDIS_URL")
 	options, err := redis.ParseURL(redisURL)
 	if err != nil || redisURL == "" {
-		options = &redis.Options{Addr: "127.0.0.1:6379"}
+		options = &redis.Options{Addr: "127.0.0.1:6381"}
 	}
-	return &Server{store: store, redis: redis.NewClient(options), internalToken: os.Getenv("INTERNAL_API_TOKEN")}
+	internalToken := os.Getenv("INTERNAL_API_TOKEN")
+	if internalToken == "" {
+		internalToken = "demo-internal-token"
+	}
+	return &Server{store: store, redis: redis.NewClient(options), internalToken: internalToken}
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {

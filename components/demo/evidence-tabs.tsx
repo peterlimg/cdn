@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useEffect, useState, useTransition } from "react"
 import { ApiLogPanel } from "./api-log-panel"
 import { EdgeLogPanel } from "./edge-log-panel"
 import { RequestProofPanel } from "./request-proof-panel"
@@ -24,9 +24,47 @@ export function EvidenceTabs({
   onRequestComplete,
 }: Props) {
   const [tab, setTab] = useState<"proof" | "edge" | "api">("proof")
+  const [proofs, setProofs] = useState(initialProofs)
   const [edgeLogs, setEdgeLogs] = useState(initialEdgeLogs)
   const [apiLogs, setApiLogs] = useState(initialApiLogs)
   const [latestProof, setLatestProof] = useState<RequestProof | null>(initialProofs[0] ?? null)
+  const [requestError, setRequestError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    setProofs(initialProofs)
+  }, [initialProofs])
+
+  useEffect(() => {
+    setEdgeLogs(initialEdgeLogs)
+  }, [initialEdgeLogs])
+
+  useEffect(() => {
+    setApiLogs(initialApiLogs)
+  }, [initialApiLogs])
+
+  useEffect(() => {
+    setLatestProof(initialProofs[0] ?? null)
+  }, [initialProofs])
+
+  async function sendRequest() {
+    setRequestError(null)
+    const response = await fetch("/api/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domainId }),
+    })
+    const payload = (await response.json()) as RequestProof | { error?: string }
+    if (!response.ok) {
+      const message = "error" in payload && payload.error ? payload.error : "Request through edge failed"
+      setRequestError(message)
+      return
+    }
+
+    const proof = payload as RequestProof
+    setProofs((current) => [proof, ...current])
+    await refreshLogs(proof)
+  }
 
   async function refreshLogs(proof: RequestProof) {
     setLatestProof(proof)
@@ -50,10 +88,13 @@ export function EvidenceTabs({
 
       {tab === "proof" ? (
         <RequestProofPanel
-          domainId={domainId}
           domainStatus={domainStatus}
-          initialProofs={initialProofs}
-          onRequestComplete={refreshLogs}
+          proofs={proofs}
+          isPending={isPending}
+          error={requestError}
+          onSendRequest={() => startTransition(() => {
+            void sendRequest()
+          })}
         />
       ) : null}
       {tab === "edge" ? <EdgeLogPanel logs={edgeLogs} /> : null}

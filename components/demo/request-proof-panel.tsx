@@ -1,34 +1,21 @@
 "use client"
 
 import React from "react"
-import { useState, useTransition } from "react"
 import type { RequestProof } from "../../services/shared/src/types"
 
 export function RequestProofPanel({
-  domainId,
   domainStatus,
-  initialProofs,
-  onRequestComplete,
+  proofs,
+  isPending,
+  error,
+  onSendRequest,
 }: {
-  domainId: string
   domainStatus: "ready" | "pending"
-  initialProofs: RequestProof[]
-  onRequestComplete?: (proof: RequestProof) => Promise<void> | void
+  proofs: RequestProof[]
+  isPending: boolean
+  error?: string | null
+  onSendRequest: () => void
 }) {
-  const [proofs, setProofs] = useState(initialProofs)
-  const [isPending, startTransition] = useTransition()
-
-  async function sendRequest() {
-    const response = await fetch("/api/request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ domainId }),
-    })
-    const proof = (await response.json()) as RequestProof
-    setProofs((current) => [proof, ...current])
-    await onRequestComplete?.(proof)
-  }
-
   return (
     <div className="card stack">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
@@ -39,9 +26,7 @@ export function RequestProofPanel({
         <button
           className="button"
           disabled={isPending}
-          onClick={() => startTransition(async () => {
-            await sendRequest()
-          })}
+          onClick={onSendRequest}
           type="button"
         >
           {isPending ? "Sending request..." : domainStatus === "ready" ? "Send request through edge" : "Show blocked request proof"}
@@ -53,6 +38,8 @@ export function RequestProofPanel({
         Rust edge logs and Go API logs for the same request ID and trace ID. If analytics later show
         `Updating` or `Degraded`, this panel is still the immediate truth for the request path.
       </p>
+
+      {error ? <div className="note">{error}</div> : null}
 
       <div className="proof-log">
         {proofs.length === 0 ? (
