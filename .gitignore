@@ -1,5 +1,7 @@
 node_modules/
 .next/
+target/
+edge-rust/target/
 
 # Logs
 npm-debug.log*
