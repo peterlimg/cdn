@@ -17,6 +17,13 @@ Service endpoints are now environment-aware. Local development still defaults to
 
 ## Start the demo with Docker Compose
 
+Export demo-only secrets before starting Compose:
+
+```bash
+export DEMO_RESET_TOKEN=replace-with-demo-reset-token
+export INTERNAL_API_TOKEN=replace-with-internal-api-token
+```
+
 ```bash
 docker compose up --build
 ```
@@ -25,8 +32,9 @@ This starts the same demo stack with an Nginx ingress in front of the existing t
 
 - Nginx ingress on `http://127.0.0.1:8080`
 - Next.js UI on `http://127.0.0.1:3000`
-- Go API/control service on `http://127.0.0.1:4001`
-- PostgreSQL on `http://127.0.0.1:5432`
+- Go API/control service on the internal Compose network
+- PostgreSQL on the internal Compose network
+- Redis on the internal Compose network
 - Rust edge service on the internal Compose network
 
 Compose waits for the Go API health check before starting the Rust edge, waits for both backend services before starting the UI, and starts Nginx after the UI and edge are available.
@@ -34,24 +42,37 @@ Compose waits for the Go API health check before starting the Rust edge, waits f
 Open `http://127.0.0.1:8080` for the ingress-backed demo path. The UI is still also directly reachable on `http://127.0.0.1:3000` for debugging.
 
 The Go control plane now persists domain, request, and log state in PostgreSQL. Restarting the API container no longer clears domain or revision data by itself.
+The main proof flow in Compose now uses the ingress-backed edge route, so request IDs can be correlated from ingress into Rust proof and Go logs.
 
 ## Health checks
 
 ```bash
 curl -I http://127.0.0.1:8080
-curl http://127.0.0.1:4001/health
-curl http://127.0.0.1:4002/health
 curl -I http://127.0.0.1:3000
+curl http://127.0.0.1:8080/edge/health
+docker compose exec api wget -qO- http://127.0.0.1:4001/health
 docker compose exec postgres pg_isready -U postgres -d cdn_demo
+docker compose exec redis redis-cli ping
 ```
 
 ## Reset the demo
 
 ```bash
-curl -X POST http://127.0.0.1:3000/api/reset
+curl -X POST http://127.0.0.1:3000/api/reset -H "x-reset-token: $DEMO_RESET_TOKEN"
 ```
 
-That reset now clears the PostgreSQL-backed control-plane tables as well as the in-memory request state in the running services.
+That reset now clears PostgreSQL-backed control-plane tables, Redis-backed rate-limit counters, and Rust edge cache marker files.
+
+## Reseed the default demo domain
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/reseed \
+  -H "x-reset-token: $DEMO_RESET_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"mode":"ready"}'
+```
+
+That recreates the default ready-domain baseline without using the UI shortcut route.
 
 ## Main walkthrough
 
@@ -65,6 +86,8 @@ That reset now clears the PostgreSQL-backed control-plane tables as well as the 
 8. Open Go API logs
 9. Open analytics or keep the analytics card visible in zone detail
 10. Continue until quota is reached
+
+The default domain rate limit is intentionally set above the quota walkthrough so the main demo reliably reaches `BLOCKED_QUOTA` first. To show rate limiting separately, reseed a fresh domain and send more than 10 requests inside one 60-second window.
 
 ## Useful logs during local development
 

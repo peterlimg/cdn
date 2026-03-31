@@ -9,7 +9,7 @@
 
 ### Rust edge logs
 - Best for explaining the edge path.
-- Shows why the edge bypassed, cached, hit, or blocked.
+- Shows why the edge bypassed, fetched from origin, cached, hit, or blocked.
 - Answer to: `Why did the edge make that decision?`
 
 ### Go API logs
@@ -24,5 +24,5 @@
 ## Correlation keys
 
 - `request_id`: ties one visible proof row to the service evidence.
-- `trace_id`: ties the same request across proof, edge logs, and API logs.
+- `trace_id`: ties the same request across proof, edge logs, and request-scoped API logs such as config lookup, rate limiting, and ingest.
 - `revision_id`: explains which config version was active.

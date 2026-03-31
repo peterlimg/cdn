@@ -14,6 +14,8 @@
 10. Continue sending requests until the free-plan quota is reached. Show that the next request is blocked with the same quota state reflected in proof and analytics.
 11. Roll the cache policy back to baseline. Explain that the active revision returns to the uncached path and the next request proves the reversal.
 
+The default walkthrough is tuned so quota is reached before rate limiting. If you want to show the Redis-backed rate-limit path, reset and reseed a fresh ready domain, then burst more than 10 requests within 60 seconds.
+
 ## Alternate walkthroughs
 
 - `pending setup`: create a `pending` demo domain to show onboarding instructions without claiming live traffic.

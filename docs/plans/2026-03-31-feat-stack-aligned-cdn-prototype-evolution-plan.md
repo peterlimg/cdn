@@ -297,6 +297,8 @@ erDiagram
 
 **Why fourth:** It introduces real edge-speed counters without making Redis authoritative for durable config.
 
+**Status note:** Review follow-up fixes completed after Unit 4: the default quota walkthrough now remains reachable before rate limiting, internal reset and edge/control internal APIs fail closed behind demo-internal tokens, reset clears PostgreSQL + Redis + Rust cache state with failure reporting, and a scriptable reseed path plus request-ID correlation now support deterministic rehearsals.
+
 ### Phase 5: Upgrade Rust into a Real Edge Proxy/Cache Pipeline
 
 **Goal:** Move from synthetic request evaluation to actual reverse-proxy behavior while preserving buyer clarity.
@@ -497,6 +499,8 @@ erDiagram
 
 **Verification:**
 - The Rust service is now a basic but credible edge proxy/cache/WAF pipeline.
+
+**Progress note:** Initial verified Unit 5 slice is now in place. Rust fetches the demo origin asset over real HTTP on bypass and miss paths, caches response bodies and metadata locally, emits bounded `ORIGIN_ERROR` and `BLOCKED_WAF` proof states, returns non-200 status codes for edge failures, and verifies Go ingest success before treating evidence as accepted. The buyer-facing proof UI remains stable while the underlying request path is now backed by real origin fetches for `/assets/demo.css`.
 
 - [ ] **Unit 6: Move analytics and event storage to ClickHouse**
 

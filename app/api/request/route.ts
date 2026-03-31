@@ -3,6 +3,7 @@ import { RUST_EDGE_URL } from "../../../lib/demo/service-endpoints"
 
 export async function POST(request: Request) {
   const body = (await request.json()) as { domainId?: string; path?: string }
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID()
 
   if (!body.domainId) {
     return NextResponse.json({ error: "domainId is required" }, { status: 400 })
@@ -10,7 +11,10 @@ export async function POST(request: Request) {
 
   const response = await fetch(`${RUST_EDGE_URL}/request`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Request-Id": requestId,
+    },
     body: JSON.stringify(body),
     cache: "no-store",
   })

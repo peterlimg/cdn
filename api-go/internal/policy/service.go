@@ -7,5 +7,5 @@ func RevisionID(revisionCount int) string {
 }
 
 func RevisionLabel(cacheEnabled bool) string {
-	return map[bool]string{true: "Edge cache enabled for /assets/demo.css", false: "Baseline - origin fetch only"}[cacheEnabled]
+	return map[bool]string{true: "Edge cache enabled for /assets/demo.css", false: "Baseline - live origin fetch only"}[cacheEnabled]
 }

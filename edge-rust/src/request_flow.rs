@@ -1,10 +1,8 @@
-use crate::counters;
+use crate::{cache, config, counters, proxy, waf};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::fmt;
 use uuid::Uuid;
-
-const BYTES_SERVED: i32 = 36_018;
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct PolicyRevision {
@@ -101,30 +99,46 @@ struct IngestPayload {
     edge_log: ServiceLog,
 }
 
-pub async fn evaluate_request(client: &Client, request: RequestBody) -> Result<RequestProof, String> {
-    let go_api_url = env::var("GO_API_URL").unwrap_or_else(|_| "http://127.0.0.1:4001".to_string());
+pub enum RequestError {
+    NotFound(String),
+    Upstream(String),
+}
+
+impl fmt::Display for RequestError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RequestError::NotFound(message) => write!(f, "{message}"),
+            RequestError::Upstream(message) => write!(f, "{message}"),
+        }
+    }
+}
+
+pub async fn evaluate_request(client: &Client, request: RequestBody, ingress_request_id: Option<String>) -> Result<RequestProof, RequestError> {
+    let runtime = config::load_runtime_config();
+    let request_id = ingress_request_id.unwrap_or_else(|| format!("req-{}", &Uuid::new_v4().to_string()[..8]));
+    let trace_id = format!("trace-{}", &Uuid::new_v4().to_string()[..8]);
     let context = client
-        .get(format!("{go_api_url}/internal/edge-context?domainId={}", request.domain_id))
+        .get(format!("{}/internal/edge-context?domainId={}&requestId={}&traceId={}", runtime.go_api_url, request.domain_id, request_id, trace_id))
+        .header("X-Internal-Token", runtime.internal_api_token.clone().unwrap_or_default())
         .send()
         .await
-        .map_err(|error| error.to_string())?
+        .map_err(|error| RequestError::Upstream(error.to_string()))?
+        .error_for_status()
+        .map_err(|error| map_status_error(error, "edge context lookup failed"))?
         .json::<EdgeContext>()
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| RequestError::Upstream(error.to_string()))?;
 
     let revision = context
         .domain
         .revisions
         .iter()
         .find(|item| item.id == context.domain.applied_revision_id)
-        .ok_or_else(|| "applied revision not found".to_string())?
+        .ok_or_else(|| RequestError::Upstream("applied revision not found".to_string()))?
         .clone();
 
-    let request_id = format!("req-{}", &Uuid::new_v4().to_string()[..8]);
-    let trace_id = format!("trace-{}", &Uuid::new_v4().to_string()[..8]);
     let timestamp = chrono_like_timestamp();
     let path = request.path.unwrap_or_else(|| "/assets/demo.css".to_string());
-    let rate_limit = counters::check_rate_limit(client, &context.domain.id, &request_id).await?;
 
     let (cache_status, disposition, bytes_served, quota_used, message) = if context.domain.status != "ready" {
         (
@@ -134,17 +148,13 @@ pub async fn evaluate_request(client: &Client, request: RequestBody) -> Result<R
             context.quota_used_bytes,
             "Domain is pending setup. Live traffic proof stays blocked until ready.".to_string(),
         )
-    } else if !rate_limit.0 {
+    } else if let Some(waf_message) = waf::evaluate_path(&path) {
         (
-            "BLOCKED_RATE_LIMIT".to_string(),
+            "BLOCKED_WAF".to_string(),
             "blocked".to_string(),
             0,
             context.quota_used_bytes,
-            format!(
-                "Redis-backed rate limit blocked this request after {} requests in the active {} second window.",
-                rate_limit.1,
-                context.rate_limit_window
-            ),
+            waf_message,
         )
     } else if context.quota_used_bytes >= context.quota_limit_bytes {
         (
@@ -154,34 +164,74 @@ pub async fn evaluate_request(client: &Client, request: RequestBody) -> Result<R
             context.quota_used_bytes,
             "Free plan bandwidth reached. Add more balance before serving more traffic.".to_string(),
         )
-    } else if revision.cache_enabled {
-        let cache_file = cache_file_name(&context.domain.id, &revision.id, &path);
-        if std::path::Path::new(&cache_file).exists() {
-            (
-                "HIT".to_string(),
-                "served".to_string(),
-                BYTES_SERVED,
-                context.quota_used_bytes + BYTES_SERVED,
-                "Served directly from Rust edge cache.".to_string(),
-            )
-        } else {
-            let _ = std::fs::write(&cache_file, b"cached");
-            (
-                "MISS".to_string(),
-                "served".to_string(),
-                BYTES_SERVED,
-                context.quota_used_bytes + BYTES_SERVED,
-                "Fetched once and stored in Rust edge cache.".to_string(),
-            )
-        }
     } else {
-        (
-            "BYPASS".to_string(),
-            "served".to_string(),
-            BYTES_SERVED,
-            context.quota_used_bytes + BYTES_SERVED,
-            "Bypassed cache and served via baseline edge path.".to_string(),
+        let rate_limit = counters::check_rate_limit(
+            client,
+            &context.domain.id,
+            &request_id,
+            &trace_id,
+            runtime.internal_api_token.clone(),
         )
+            .await
+            .map_err(RequestError::Upstream)?;
+        if !rate_limit.0 {
+            (
+                "BLOCKED_RATE_LIMIT".to_string(),
+                "blocked".to_string(),
+                0,
+                context.quota_used_bytes,
+                format!(
+                    "Redis-backed rate limit blocked this request after {} requests in the active {} second window.",
+                    rate_limit.1,
+                    context.rate_limit_window
+                ),
+            )
+        } else if revision.cache_enabled {
+            if let Some(cached) = cache::read_cached_response(&context.domain.id, &revision.id, &path).map_err(RequestError::Upstream)? {
+                (
+                    "HIT".to_string(),
+                    "served".to_string(),
+                    cached.body_bytes,
+                    context.quota_used_bytes + cached.body_bytes,
+                    format!(
+                        "Served {} bytes from Rust edge cache for {}.",
+                        cached.body_bytes, path
+                    ),
+                )
+            } else {
+                match proxy::fetch_origin_response(client, &context.domain.origin, &path, &request_id).await {
+                    Ok(origin) => {
+                        let cached = cache::write_cached_response(&context.domain.id, &revision.id, &path, &origin)
+                            .map_err(RequestError::Upstream)?;
+                        (
+                            "MISS".to_string(),
+                            "served".to_string(),
+                            cached.body_bytes,
+                            context.quota_used_bytes + cached.body_bytes,
+                            format!(
+                                "Fetched {} bytes from {} and stored the response in Rust edge cache.",
+                                cached.body_bytes, cached.origin_url
+                            ),
+                        )
+                    }
+                    Err(error) => origin_error_outcome(error, context.quota_used_bytes),
+                }
+            }
+        } else {
+            match proxy::fetch_origin_response(client, &context.domain.origin, &path, &request_id).await {
+                Ok(origin) => (
+                    "BYPASS".to_string(),
+                    "served".to_string(),
+                    origin.body_bytes(),
+                    context.quota_used_bytes + origin.body_bytes(),
+                    format!(
+                        "Fetched {} bytes from {} with cache policy disabled.",
+                        origin.body_bytes(), origin.origin_url
+                    ),
+                ),
+                Err(error) => origin_error_outcome(error, context.quota_used_bytes),
+            }
+        }
     };
 
     let proof = RequestProof {
@@ -215,20 +265,38 @@ pub async fn evaluate_request(client: &Client, request: RequestBody) -> Result<R
     };
 
     client
-        .post(format!("{go_api_url}/internal/edge-ingest"))
+        .post(format!("{}/internal/edge-ingest", runtime.go_api_url))
+        .header("X-Internal-Token", runtime.internal_api_token.unwrap_or_default())
         .json(&IngestPayload { proof: proof.clone(), edge_log: log })
         .send()
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| RequestError::Upstream(error.to_string()))?
+        .error_for_status()
+        .map_err(|error| map_status_error(error, "edge ingest failed"))?;
 
     Ok(proof)
 }
 
-fn cache_file_name(domain_id: &str, revision_id: &str, path: &str) -> String {
-    let safe_path = path.replace('/', "_");
-    format!("/tmp/edge-cache-{domain_id}-{revision_id}-{safe_path}")
+fn origin_error_outcome(error: proxy::OriginFetchError, quota_used_bytes: i32) -> (String, String, i32, i32, String) {
+    let message = match error {
+        proxy::OriginFetchError::NotFound(message) => message,
+        proxy::OriginFetchError::Upstream(message) => message,
+    };
+    (
+        "ORIGIN_ERROR".to_string(),
+        "blocked".to_string(),
+        0,
+        quota_used_bytes,
+        format!("Origin request could not be served: {message}"),
+    )
 }
 
+fn map_status_error(error: reqwest::Error, default_message: &str) -> RequestError {
+    match error.status() {
+        Some(reqwest::StatusCode::NOT_FOUND) => RequestError::NotFound(default_message.to_string()),
+        _ => RequestError::Upstream(default_message.to_string()),
+    }
+}
 fn chrono_like_timestamp() -> String {
     let now = std::time::SystemTime::now();
     let datetime: chrono::DateTime<chrono::Utc> = now.into();

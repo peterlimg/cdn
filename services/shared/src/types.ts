@@ -12,7 +12,9 @@ export type CacheStatus =
   | "HIT"
   | "BLOCKED_QUOTA"
   | "BLOCKED_PENDING"
+  | "BLOCKED_WAF"
   | "BLOCKED_RATE_LIMIT"
+  | "ORIGIN_ERROR"
 
 export type ServiceName = "edge" | "api"
 
@@ -45,6 +47,7 @@ export type DomainRecord = {
   dnsRecords?: DNSRecord[]
   proxyMode?: "proxied" | "dns-only"
   routeHint?: string
+  rateLimit?: number
 }
 
 export type RequestProof = {

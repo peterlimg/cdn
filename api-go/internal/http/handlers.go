@@ -15,8 +15,9 @@ import (
 )
 
 type Server struct {
-	store *state.Store
-	redis *redis.Client
+	store         *state.Store
+	redis         *redis.Client
+	internalToken string
 }
 
 func NewServer(store *state.Store) *Server {
@@ -25,7 +26,7 @@ func NewServer(store *state.Store) *Server {
 	if err != nil || redisURL == "" {
 		options = &redis.Options{Addr: "127.0.0.1:6379"}
 	}
-	return &Server{store: store, redis: redis.NewClient(options)}
+	return &Server{store: store, redis: redis.NewClient(options), internalToken: os.Getenv("INTERNAL_API_TOKEN")}
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {
@@ -34,12 +35,36 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	_ = json.NewEncoder(w).Encode(value)
 }
 
+func (s *Server) requireInternalAuth(w http.ResponseWriter, r *http.Request) bool {
+	if s.internalToken == "" {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "internal auth is not configured"})
+		return false
+	}
+	if r.Header.Get("X-Internal-Token") == s.internalToken {
+		return true
+	}
+	writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+	return false
+}
+
 func decode(r *http.Request, target any) error {
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
 func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		if err := s.store.Healthy(ctx); err != nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "degraded", "error": "postgres unavailable"})
+			return
+		}
+		if os.Getenv("REDIS_URL") != "" {
+			if err := s.redis.Ping(ctx).Err(); err != nil {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "degraded", "error": "redis unavailable"})
+				return
+			}
+		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("/dashboard", s.handleDashboard)
@@ -148,13 +173,32 @@ func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	s.store.Reset()
+	if !s.requireInternalAuth(w, r) {
+		return
+	}
+	if err := s.store.Reset(); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "postgres reset failed"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	if os.Getenv("REDIS_URL") != "" {
+		if err := s.redis.FlushDB(ctx).Err(); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "redis reset failed"})
+			return
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (s *Server) handleEdgeContext(w http.ResponseWriter, r *http.Request) {
+	if !s.requireInternalAuth(w, r) {
+		return
+	}
 	domainID := r.URL.Query().Get("domainId")
-	context, ok := s.store.EdgeContext(domainID)
+	requestID := r.URL.Query().Get("requestId")
+	traceID := r.URL.Query().Get("traceId")
+	context, ok := s.store.EdgeContext(domainID, requestID, traceID)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})
 		return
@@ -163,6 +207,9 @@ func (s *Server) handleEdgeContext(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleEdgeIngest(w http.ResponseWriter, r *http.Request) {
+	if !s.requireInternalAuth(w, r) {
+		return
+	}
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -172,11 +219,17 @@ func (s *Server) handleEdgeIngest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid ingest payload"})
 		return
 	}
-	s.store.IngestEdgeEvent(payload)
+	if err := s.store.IngestEdgeEvent(payload); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "edge ingest persist failed"})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (s *Server) handleRateLimit(w http.ResponseWriter, r *http.Request) {
+	if !s.requireInternalAuth(w, r) {
+		return
+	}
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -185,6 +238,7 @@ func (s *Server) handleRateLimit(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		DomainID  string `json:"domainId"`
 		RequestID string `json:"requestId"`
+		TraceID   string `json:"traceId"`
 	}
 	if err := decode(r, &body); err != nil || body.DomainID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "domainId is required"})
@@ -203,8 +257,29 @@ func (s *Server) handleRateLimit(w http.ResponseWriter, r *http.Request) {
 	key := fmt.Sprintf("ratelimit:%s:%d", domain.ID, time.Now().UTC().Unix()/int64(windowSeconds))
 	count, err := s.redis.Incr(ctx, key).Result()
 	if err == nil {
-		_, _ = s.redis.Expire(ctx, key, time.Duration(windowSeconds)*time.Second).Result()
+		_, _ = s.redis.ExpireNX(ctx, key, time.Duration(windowSeconds)*time.Second).Result()
 	}
 	allowed := err != nil || int(count) <= domain.RateLimit
+	if !allowed {
+		s.store.RecordServiceLog(state.ServiceLog{
+			Service:   "api",
+			Level:     "WARN",
+			RequestID: body.RequestID,
+			TraceID:   traceIDOrDomain(body.TraceID, domain.ID),
+			DomainID:  domain.ID,
+			Revision:  domain.ActiveRevision,
+			Event:     "limits.rate_limit",
+			Outcome:   "blocked",
+			Message:   fmt.Sprintf("Redis-backed rate limit blocked this request after %d requests in the active %d second window.", count, windowSeconds),
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		})
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"allowed": allowed, "count": count, "limit": domain.RateLimit, "windowSeconds": windowSeconds})
+}
+
+func traceIDOrDomain(traceID, domainID string) string {
+	if traceID != "" {
+		return traceID
+	}
+	return domainID
 }

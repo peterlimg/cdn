@@ -1,9 +1,11 @@
 package state
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -13,6 +15,8 @@ import (
 )
 
 const quotaLimitBytes = 150000
+const defaultRateLimit = 10
+const minimumQuotaSafeRateLimit = 6
 
 type Store struct {
 	mu         sync.Mutex
@@ -30,12 +34,12 @@ func NewStore(client *db.Client) *Store {
 	return store
 }
 
-func (s *Store) Reset() {
+func (s *Store) Reset() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.db != nil {
 		if err := s.db.Reset(); err != nil {
-			log.Printf("control-plane reset did not fully clear postgres state: %v", err)
+			return err
 		}
 	}
 	s.domains = map[string]DomainRecord{}
@@ -43,6 +47,14 @@ func (s *Store) Reset() {
 	s.logs = nil
 	s.nextDomain = 0
 	s.nextLog = 0
+	return nil
+}
+
+func (s *Store) Healthy(ctx context.Context) error {
+	if s.db == nil {
+		return nil
+	}
+	return s.db.Ping(ctx)
 }
 
 func now() string {
@@ -71,7 +83,7 @@ func buildDomain(id, hostname, mode string) DomainRecord {
 	return DomainRecord{
 		ID:              id,
 		Hostname:        hostname,
-		Origin:          "demo-origin.internal",
+		Origin:          demoOriginURL(),
 		Status:          DomainStatus(mode),
 		ReadinessNote:   map[bool]string{true: "Pre-verified demo domain ready for live traffic proof.", false: "Onboarding records are configured but live traffic stays blocked in pending mode."}[ready],
 		TruthLabel:      map[bool]string{true: "live-proof", false: "seeded-demo-data"}[ready],
@@ -81,8 +93,22 @@ func buildDomain(id, hostname, mode string) DomainRecord {
 		DNSRecords:      buildDNSRecords(hostname),
 		ProxyMode:       "proxied",
 		RouteHint:       "/assets/demo.css",
-		RateLimit:       3,
+		RateLimit:       defaultRateLimit,
 	}
+}
+
+func demoOriginURL() string {
+	if value := os.Getenv("DEMO_ORIGIN_URL"); value != "" {
+		return value
+	}
+	return "http://127.0.0.1:3000/origin"
+}
+
+func traceIDOrDomain(traceID, domainID string) string {
+	if traceID != "" {
+		return traceID
+	}
+	return domainID
 }
 
 func (s *Store) loadPersistedState() {
@@ -101,8 +127,8 @@ func (s *Store) loadPersistedState() {
 			log.Printf("control-plane postgres domain decode failed: %v", err)
 			continue
 		}
-		if domain.RateLimit == 0 {
-			domain.RateLimit = 3
+		if domain.RateLimit < minimumQuotaSafeRateLimit {
+			domain.RateLimit = defaultRateLimit
 		}
 		s.domains[domain.ID] = domain
 		if seq := domains.ParseDomainSequence(domain.ID); seq > s.nextDomain {
@@ -151,7 +177,11 @@ func (s *Store) nextDomainID() string {
 
 func (s *Store) nextLogID() string {
 	s.nextLog++
-	return fmt.Sprintf("log-%06d", s.nextLog)
+	return formatLogID(s.nextLog)
+}
+
+func formatLogID(sequence int) string {
+	return fmt.Sprintf("log-%06d", sequence)
 }
 
 func (s *Store) CreateDomain(hostname string, mode string) DomainRecord {
@@ -160,7 +190,9 @@ func (s *Store) CreateDomain(hostname string, mode string) DomainRecord {
 	domain := buildDomain(s.nextDomainID(), hostname, mode)
 	s.domains[domain.ID] = domain
 	s.persistDomainLocked(domain)
-	s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "domain-create", TraceID: domain.ID, DomainID: domain.ID, Revision: domain.ActiveRevision, Event: "domain.create", Outcome: "stored", Message: "Domain created in Go control service.", Timestamp: now()})
+	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "domain-create", TraceID: domain.ID, DomainID: domain.ID, Revision: domain.ActiveRevision, Event: "domain.create", Outcome: "stored", Message: "Domain created in Go control service.", Timestamp: now()}); err != nil {
+		log.Printf("control-plane log persist failed: %v", err)
+	}
 	return domain
 }
 
@@ -181,6 +213,14 @@ func (s *Store) GetDomain(id string) (DomainRecord, bool) {
 	return domain, ok
 }
 
+func (s *Store) RecordServiceLog(entry ServiceLog) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.appendLogLocked(entry); err != nil {
+		log.Printf("control-plane log persist failed: %v", err)
+	}
+}
+
 func (s *Store) PublishPolicy(domainID string, cacheEnabled bool) (PolicyRevision, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -199,7 +239,9 @@ func (s *Store) PublishPolicy(domainID string, cacheEnabled bool) (PolicyRevisio
 	domain.Revisions = append(domain.Revisions, revision)
 	s.domains[domainID] = domain
 	s.persistDomainLocked(domain)
-	s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "policy-publish", TraceID: domainID, DomainID: domainID, Revision: revision.ID, Event: "policy.publish", Outcome: "applied", Message: revision.Label, Timestamp: now()})
+	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "policy-publish", TraceID: domainID, DomainID: domainID, Revision: revision.ID, Event: "policy.publish", Outcome: "applied", Message: revision.Label, Timestamp: now()}); err != nil {
+		log.Printf("control-plane log persist failed: %v", err)
+	}
 	return revision, true
 }
 
@@ -221,11 +263,13 @@ func (s *Store) RollbackPolicy(domainID string) (PolicyRevision, bool) {
 	domain.AppliedRevision = target.ID
 	s.domains[domainID] = domain
 	s.persistDomainLocked(domain)
-	s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "policy-rollback", TraceID: domainID, DomainID: domainID, Revision: target.ID, Event: "policy.rollback", Outcome: "baseline", Message: "Returned policy to baseline revision.", Timestamp: now()})
+	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "policy-rollback", TraceID: domainID, DomainID: domainID, Revision: target.ID, Event: "policy.rollback", Outcome: "baseline", Message: "Returned policy to baseline revision.", Timestamp: now()}); err != nil {
+		log.Printf("control-plane log persist failed: %v", err)
+	}
 	return target, true
 }
 
-func (s *Store) EdgeContext(domainID string) (EdgeContext, bool) {
+func (s *Store) EdgeContext(domainID, requestID, traceID string) (EdgeContext, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	domain, ok := s.domains[domainID]
@@ -238,25 +282,46 @@ func (s *Store) EdgeContext(domainID string) (EdgeContext, bool) {
 			quotaUsed += event.BytesServed
 		}
 	}
-	s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "config-lookup", TraceID: domainID, DomainID: domainID, Revision: domain.ActiveRevision, Event: "config.lookup", Outcome: "served", Message: "Served edge context to Rust edge service.", Timestamp: now()})
+	if requestID == "" {
+		requestID = "config-lookup"
+	}
+	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: requestID, TraceID: traceIDOrDomain(traceID, domainID), DomainID: domainID, Revision: domain.ActiveRevision, Event: "config.lookup", Outcome: "served", Message: "Served edge context to Rust edge service.", Timestamp: now()}); err != nil {
+		log.Printf("control-plane log persist failed: %v", err)
+	}
 	return EdgeContext{Domain: domain, QuotaUsedBytes: quotaUsed, QuotaLimitBytes: quotaLimitBytes, RateLimitWindow: 60}, true
 }
 
-func (s *Store) IngestEdgeEvent(payload EdgeIngestPayload) {
+func (s *Store) IngestEdgeEvent(payload EdgeIngestPayload) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	edgeLog := payload.EdgeLog
+	edgeLog.ID = fmt.Sprintf("log-edge-%s", payload.Proof.RequestID)
+	apiLog := ServiceLog{Service: "api", Level: "INFO", RequestID: payload.Proof.RequestID, TraceID: payload.Proof.TraceID, DomainID: payload.Proof.DomainID, Revision: payload.Proof.RevisionID, Event: "edge.ingest", Outcome: payload.Proof.FinalDisposition, Message: "Ingested edge proof into Go analytics state.", Timestamp: now()}
+	apiLog.ID = fmt.Sprintf("log-api-ingest-%s", payload.Proof.RequestID)
+
+	if err := s.persistEventLocked(payload.Proof); err != nil {
+		return err
+	}
+	if err := s.persistLogLocked(edgeLog); err != nil {
+		return err
+	}
+	if err := s.persistLogLocked(apiLog); err != nil {
+		return err
+	}
+
 	s.events = append([]RequestProof{payload.Proof}, s.events...)
-	s.persistEventLocked(payload.Proof)
-	payload.EdgeLog.ID = s.nextLogID()
-	s.logs = append([]ServiceLog{payload.EdgeLog}, s.logs...)
-	s.persistLogLocked(payload.EdgeLog)
-	s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: payload.Proof.RequestID, TraceID: payload.Proof.TraceID, DomainID: payload.Proof.DomainID, Revision: payload.Proof.RevisionID, Event: "edge.ingest", Outcome: payload.Proof.FinalDisposition, Message: "Ingested edge proof into Go analytics state.", Timestamp: now()})
+	s.logs = append([]ServiceLog{apiLog, edgeLog}, s.logs...)
+	return nil
 }
 
-func (s *Store) appendLogLocked(log ServiceLog) {
-	log.ID = s.nextLogID()
+func (s *Store) appendLogLocked(log ServiceLog) error {
+	log.ID = formatLogID(s.nextLog + 1)
+	if err := s.persistLogLocked(log); err != nil {
+		return err
+	}
+	s.nextLog++
 	s.logs = append([]ServiceLog{log}, s.logs...)
-	s.persistLogLocked(log)
+	return nil
 }
 
 func (s *Store) persistDomainLocked(domain DomainRecord) {
@@ -273,32 +338,32 @@ func (s *Store) persistDomainLocked(domain DomainRecord) {
 	}
 }
 
-func (s *Store) persistEventLocked(event RequestProof) {
+func (s *Store) persistEventLocked(event RequestProof) error {
 	if s.db == nil {
-		return
+		return nil
 	}
 	payload, err := json.Marshal(event)
 	if err != nil {
-		log.Printf("control-plane event encode failed: %v", err)
-		return
+		return err
 	}
 	if err := s.db.InsertEvent(event.RequestID, event.DomainID, db.ParseTimestamp(event.Timestamp), payload); err != nil {
-		log.Printf("control-plane event persist failed: %v", err)
+		return err
 	}
+	return nil
 }
 
-func (s *Store) persistLogLocked(entry ServiceLog) {
+func (s *Store) persistLogLocked(entry ServiceLog) error {
 	if s.db == nil {
-		return
+		return nil
 	}
 	payload, err := json.Marshal(entry)
 	if err != nil {
-		log.Printf("control-plane log encode failed: %v", err)
-		return
+		return err
 	}
 	if err := s.db.InsertLog(entry.ID, entry.DomainID, entry.Service, db.ParseTimestamp(entry.Timestamp), payload); err != nil {
-		log.Printf("control-plane log persist failed: %v", err)
+		return err
 	}
+	return nil
 }
 
 func (s *Store) Logs(domainID, service, requestID string) []ServiceLog {

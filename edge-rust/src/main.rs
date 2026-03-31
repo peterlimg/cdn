@@ -1,8 +1,17 @@
+mod cache;
+mod config;
 mod counters;
 mod logging;
+mod proxy;
 mod request_flow;
+mod waf;
 
-use axum::{extract::State, routing::{get, post}, Json, Router};
+use axum::{
+    extract::State,
+    http::{HeaderMap, StatusCode},
+    routing::{get, post},
+    Json, Router,
+};
 use reqwest::Client;
 use request_flow::{evaluate_request, RequestBody};
 use serde_json::json;
@@ -20,6 +29,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(|| async { Json(json!({ "status": "ok" })) }))
         .route("/request", post(handle_request))
+        .route("/reset", post(handle_reset))
         .with_state(state);
 
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
@@ -32,10 +42,40 @@ async fn main() {
 
 async fn handle_request(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(body): Json<RequestBody>,
-) -> Result<Json<request_flow::RequestProof>, Json<serde_json::Value>> {
-    match evaluate_request(&state.client, body).await {
+) -> Result<Json<request_flow::RequestProof>, (StatusCode, Json<serde_json::Value>)> {
+    let request_id = headers
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .map(|value| value.to_string());
+    match evaluate_request(&state.client, body, request_id).await {
         Ok(proof) => Ok(Json(proof)),
-        Err(error) => Err(Json(json!({ "error": error }))),
+        Err(request_flow::RequestError::NotFound(error)) => Err((StatusCode::NOT_FOUND, Json(json!({ "error": error })))),
+        Err(request_flow::RequestError::Upstream(error)) => Err((StatusCode::BAD_GATEWAY, Json(json!({ "error": error })))),
+    }
+}
+
+async fn handle_reset(headers: HeaderMap) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let token = match env::var("INTERNAL_API_TOKEN") {
+        Ok(value) if !value.is_empty() => value,
+        _ => {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({ "error": "internal auth is not configured" })),
+            ))
+        }
+    };
+
+    let provided = headers
+        .get("x-internal-token")
+        .and_then(|value| value.to_str().ok());
+    if provided != Some(token.as_str()) {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "forbidden" }))));
+    }
+
+    match cache::clear_cache_files() {
+        Ok(()) => Ok(Json(json!({ "ok": true }))),
+        Err(error) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": error })))),
     }
 }

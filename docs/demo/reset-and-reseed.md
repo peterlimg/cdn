@@ -6,30 +6,45 @@ This demo reset path restores the Go control plane and recent request evidence t
 
 ## Reset command
 
+Export the demo-only reset and internal tokens before using reset or reseed:
+
 ```bash
-curl -X POST http://127.0.0.1:3000/api/reset
+export DEMO_RESET_TOKEN=replace-with-demo-reset-token
+export INTERNAL_API_TOKEN=replace-with-internal-api-token
 ```
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/reset -H "x-reset-token: $DEMO_RESET_TOKEN"
+```
+
+Reset now fails closed if PostgreSQL, Redis, or the Rust cache reset cannot be completed.
 
 ## What reset clears today
 
 - PostgreSQL-backed domain records
 - PostgreSQL-backed request events
 - PostgreSQL-backed service logs
-- In-memory Go counters and request slices in the running process
-
-## What reset does not clear today
-
+- Redis-backed rate-limit counters
 - Rust local cache marker files under `/tmp/edge-cache-*`
-
-If you need a fully cold cache rehearsal, remove those files manually before restarting the flow.
+- In-memory Go counters and request slices in the running process
 
 ## Recommended reseed flow
 
 1. Run the reset endpoint.
-2. Create a ready domain from `/domains/new`.
+2. Recreate the default ready domain non-interactively:
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/reseed \
+  -H "x-reset-token: $DEMO_RESET_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"mode":"ready"}'
+```
+
 3. Send one baseline request.
 4. Enable cache.
 5. Send two repeated requests to restore `MISS` then `HIT`.
+
+Use `{"mode":"pending"}` to reseed the pending-domain walkthrough instead.
 
 ## Compose notes
 
