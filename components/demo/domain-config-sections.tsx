@@ -21,16 +21,21 @@ function DNSRow({ record }: { record: DNSRecord }) {
 }
 
 export function DomainConfigSections({
+  domainId,
   origin,
   dnsRecords,
   proxyMode,
   routeHint,
 }: {
+  domainId: string
   origin: string
   dnsRecords: DNSRecord[]
   proxyMode?: string
   routeHint?: string
 }) {
+  const liveRoute = routeHint ?? "/assets/demo.css"
+  const proxiedCheckUrl = `/api/proxy-check?domainId=${domainId}&path=${encodeURIComponent(liveRoute)}`
+
   return (
     <div className="card stack">
       <div>
@@ -50,7 +55,17 @@ export function DomainConfigSections({
           </div>
           <div className="badge pending">{proxyMode ?? "proxied"}</div>
         </div>
-        <div className="small muted">Live proof route: {routeHint ?? "/assets/demo.css"}</div>
+        <div className="small muted">Request route hint: {liveRoute}</div>
+        <div className="note stack" style={{ gap: 8 }}>
+          <div className="small">
+            Real edge check: <code>{proxiedCheckUrl}</code>
+          </div>
+          <div className="small muted">
+            Use this proxied asset URL from either the direct UI or the ingress-backed demo to rehearse the actual edge response path. The response returns
+            <code> X-Request-Id</code>, <code> X-Trace-Id</code>, and <code> X-Cache-Status</code>
+            headers for correlation back to proof and logs.
+          </div>
+        </div>
       </div>
 
       <div className="stack">

@@ -3,12 +3,14 @@ package state
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"sync"
 	"time"
 
+	analyticsstore "cdn-demo/api-go/internal/analytics"
 	"cdn-demo/api-go/internal/db"
 	"cdn-demo/api-go/internal/domains"
 	"cdn-demo/api-go/internal/policy"
@@ -19,17 +21,29 @@ const defaultRateLimit = 10
 const minimumQuotaSafeRateLimit = 6
 
 type Store struct {
-	mu         sync.Mutex
-	db         *db.Client
-	domains    map[string]DomainRecord
-	events     []RequestProof
-	logs       []ServiceLog
-	nextDomain int
-	nextLog    int
+	mu                 sync.Mutex
+	db                 *db.Client
+	analytics          analyticsClient
+	analyticsFreshness string
+	domains            map[string]DomainRecord
+	events             []RequestProof
+	logs               []ServiceLog
+	nextDomain         int
+	nextLog            int
 }
 
-func NewStore(client *db.Client) *Store {
-	store := &Store{db: client, domains: map[string]DomainRecord{}}
+type analyticsClient interface {
+	Enabled() bool
+	Healthy(ctx context.Context) error
+	InsertRequestEvent(ctx context.Context, event analyticsstore.Event) error
+	Reset(ctx context.Context) error
+	QuerySummary(ctx context.Context, domainID string, quotaLimitBytes int) (analyticsstore.Summary, error)
+}
+
+var ErrAnalyticsReset = errors.New("clickhouse reset failed")
+
+func NewStore(client *db.Client, analytics analyticsClient) *Store {
+	store := &Store{db: client, analytics: analytics, analyticsFreshness: "live", domains: map[string]DomainRecord{}}
 	store.loadPersistedState()
 	return store
 }
@@ -37,6 +51,13 @@ func NewStore(client *db.Client) *Store {
 func (s *Store) Reset() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.analytics != nil && s.analytics.Enabled() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if err := s.analytics.Reset(ctx); err != nil {
+			return fmt.Errorf("%w: %v", ErrAnalyticsReset, err)
+		}
+	}
 	if s.db != nil {
 		if err := s.db.Reset(); err != nil {
 			return err
@@ -47,6 +68,7 @@ func (s *Store) Reset() error {
 	s.logs = nil
 	s.nextDomain = 0
 	s.nextLog = 0
+	s.analyticsFreshness = "live"
 	return nil
 }
 
@@ -55,6 +77,13 @@ func (s *Store) Healthy(ctx context.Context) error {
 		return nil
 	}
 	return s.db.Ping(ctx)
+}
+
+func (s *Store) AnalyticsHealthy(ctx context.Context) error {
+	if s.analytics == nil || !s.analytics.Enabled() {
+		return nil
+	}
+	return s.analytics.Healthy(ctx)
 }
 
 func now() string {
@@ -302,6 +331,31 @@ func (s *Store) IngestEdgeEvent(payload EdgeIngestPayload) error {
 	if err := s.persistEventLocked(payload.Proof); err != nil {
 		return err
 	}
+	if s.analytics != nil && s.analytics.Enabled() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		event := analyticsstore.Event{
+			RequestID:        payload.Proof.RequestID,
+			TraceID:          payload.Proof.TraceID,
+			DomainID:         payload.Proof.DomainID,
+			Hostname:         payload.Proof.Hostname,
+			Path:             payload.Proof.Path,
+			RevisionID:       payload.Proof.RevisionID,
+			CacheStatus:      payload.Proof.CacheStatus,
+			FinalDisposition: payload.Proof.FinalDisposition,
+			BytesServed:      payload.Proof.BytesServed,
+			QuotaUsedBytes:   payload.Proof.QuotaUsedBytes,
+			QuotaLimitBytes:  payload.Proof.QuotaLimitBytes,
+			Message:          payload.Proof.Message,
+			Timestamp:        payload.Proof.Timestamp,
+		}
+		if err := s.analytics.InsertRequestEvent(ctx, event); err != nil {
+			log.Printf("clickhouse analytics ingest failed: %v", err)
+			s.analyticsFreshness = "degraded"
+		} else if s.analyticsFreshness != "degraded" {
+			s.analyticsFreshness = "live"
+		}
+	}
 	if err := s.persistLogLocked(edgeLog); err != nil {
 		return err
 	}
@@ -389,9 +443,54 @@ func (s *Store) Logs(domainID, service, requestID string) []ServiceLog {
 }
 
 func (s *Store) Analytics(domainID string) AnalyticsSummary {
+	if s.analytics != nil && s.analytics.Enabled() {
+		if s.analyticsFreshness == "degraded" {
+			s.mu.Lock()
+			degraded := s.analyticsLocked(domainID)
+			s.mu.Unlock()
+			degraded.Freshness = analyticsFreshness("updating", s.analyticsFreshness)
+			return degraded
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		summary, err := s.analytics.QuerySummary(ctx, domainID, quotaLimitBytes)
+		if err == nil {
+			if summary.Status == analyticsstore.QueryStatusLive {
+				s.analyticsFreshness = "live"
+			}
+			return AnalyticsSummary{
+				TotalRequests:   summary.TotalRequests,
+				ServedRequests:  summary.ServedRequests,
+				BlockedRequests: summary.BlockedRequests,
+				BandwidthBytes:  summary.BandwidthBytes,
+				CacheHits:       summary.CacheHits,
+				CacheMisses:     summary.CacheMisses,
+				CacheBypass:     summary.CacheBypass,
+				HitRatio:        summary.HitRatio,
+				CacheValueBytes: summary.CacheValueBytes,
+				QuotaUsedBytes:  summary.QuotaUsedBytes,
+				QuotaLimitBytes: summary.QuotaLimitBytes,
+				QuotaReached:    summary.QuotaReached,
+				Freshness:       analyticsFreshness(summary.Freshness, s.analyticsFreshness),
+			}
+		}
+		log.Printf("clickhouse analytics query failed, falling back to postgres-backed events: %v", err)
+		s.analyticsFreshness = "degraded"
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.analyticsLocked(domainID)
+	summary := s.analyticsLocked(domainID)
+	if s.analytics != nil && s.analytics.Enabled() {
+		summary.Freshness = analyticsFreshness("updating", s.analyticsFreshness)
+	}
+	return summary
+}
+
+func analyticsFreshness(clickhouseFreshness, localFreshness string) string {
+	if localFreshness == "degraded" {
+		return "degraded"
+	}
+	return clickhouseFreshness
 }
 
 func (s *Store) analyticsLocked(domainID string) AnalyticsSummary {
@@ -460,5 +559,15 @@ func (s *Store) Events(domainID string) []RequestProof {
 
 func (s *Store) Dashboard(domainID string) DashboardSnapshot {
 	domains := s.ListDomains()
-	return DashboardSnapshot{Domains: domains, Events: s.Events(domainID), Analytics: s.Analytics(domainID), Quota: s.Quota(domainID)}
+	analytics := s.Analytics(domainID)
+	remaining := analytics.QuotaLimitBytes - analytics.QuotaUsedBytes
+	if remaining < 0 {
+		remaining = 0
+	}
+	percent := (float64(analytics.QuotaUsedBytes) / float64(analytics.QuotaLimitBytes)) * 100
+	if percent > 100 {
+		percent = 100
+	}
+	quota := QuotaState{UsedBytes: analytics.QuotaUsedBytes, LimitBytes: analytics.QuotaLimitBytes, Reached: analytics.QuotaReached, RemainingBytes: remaining, PercentUsed: percent}
+	return DashboardSnapshot{Domains: domains, Events: s.Events(domainID), Analytics: analytics, Quota: quota}
 }

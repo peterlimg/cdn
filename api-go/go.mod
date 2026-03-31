@@ -3,6 +3,7 @@ module cdn-demo/api-go
 go 1.22.4
 
 require (
+	github.com/ClickHouse/clickhouse-go/v2 v2.30.0
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.7.0
 )

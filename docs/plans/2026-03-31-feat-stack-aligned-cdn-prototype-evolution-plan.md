@@ -299,6 +299,10 @@ erDiagram
 
 **Status note:** Review follow-up fixes completed after Unit 4: the default quota walkthrough now remains reachable before rate limiting, internal reset and edge/control internal APIs fail closed behind demo-internal tokens, reset clears PostgreSQL + Redis + Rust cache state with failure reporting, and a scriptable reseed path plus request-ID correlation now support deterministic rehearsals.
 
+### Phase 6 Status Note
+
+Initial verified Unit 6 slice is now in place. ClickHouse is part of Compose, Go can append request events into ClickHouse opportunistically, `/analytics` prefers ClickHouse-backed summaries when available, analytics freshness now distinguishes `live`, `updating`, and `degraded`, reset clears ClickHouse event state alongside PostgreSQL/Redis/Rust cache state, and the analytics UI explicitly frames lagged or degraded summaries as secondary to request proof and service logs.
+
 ### Phase 5: Upgrade Rust into a Real Edge Proxy/Cache Pipeline
 
 **Goal:** Move from synthetic request evaluation to actual reverse-proxy behavior while preserving buyer clarity.
@@ -466,7 +470,7 @@ erDiagram
 **Verification:**
 - The edge has realistic fast-path counters without creating durable-state confusion.
 
-- [ ] **Unit 5: Upgrade Rust from edge evaluator to real reverse proxy/cache pipeline**
+- [x] **Unit 5: Upgrade Rust from edge evaluator to real reverse proxy/cache pipeline**
 
 **Goal:** Make the Rust service handle real proxied traffic and cache objects instead of demo-only request decisions.
 
@@ -500,9 +504,9 @@ erDiagram
 **Verification:**
 - The Rust service is now a basic but credible edge proxy/cache/WAF pipeline.
 
-**Progress note:** Initial verified Unit 5 slice is now in place. Rust fetches the demo origin asset over real HTTP on bypass and miss paths, caches response bodies and metadata locally, emits bounded `ORIGIN_ERROR` and `BLOCKED_WAF` proof states, returns non-200 status codes for edge failures, and verifies Go ingest success before treating evidence as accepted. The buyer-facing proof UI remains stable while the underlying request path is now backed by real origin fetches for `/assets/demo.css`.
+**Progress note:** Initial verified Unit 5 slice is now in place and has been extended three times. Rust fetches the demo origin asset over real HTTP on bypass and miss paths, caches response bodies and metadata locally, emits bounded `ORIGIN_ERROR` and `BLOCKED_WAF` proof states, returns non-200 status codes for edge failures, verifies Go ingest success before treating evidence as accepted, serves a real proxied asset route at `/edge/proxy/assets/demo.css?domainId=<zone-id>` with `X-Request-Id`, `X-Trace-Id`, and `X-Cache-Status` headers for direct edge rehearsal traffic, has direct Rust-side tests covering cache round-trip plus proxy response status/header/body behavior, surfaces the exact proxied rehearsal URL in the zone detail UI so presenters can exercise the real edge path without reconstructing the route manually, now matches the documented precedence order by evaluating rate limits before quota blocks, and has been made Compose-safe by switching the edge HTTP client to `rustls` and updating the Axum wildcard proxy route syntax.
 
-- [ ] **Unit 6: Move analytics and event storage to ClickHouse**
+- [x] **Unit 6: Move analytics and event storage to ClickHouse**
 
 **Goal:** Put analytics in the right system without weakening the immediate proof story.
 
@@ -533,7 +537,9 @@ erDiagram
 **Verification:**
 - Analytics become architecture-aligned while preserving the existing evidence hierarchy.
 
-- [ ] **Unit 7: Reconcile buyer-facing UX, docs, and demo operations**
+**Progress note:** ClickHouse-backed request-event storage and Go-served summary queries are now wired into the stack with explicit freshness semantics, reset support, and bounded health behavior. The earlier replay-on-read recovery path was removed because it could duplicate append-only analytics rows after partial outages. The control plane now treats any failed ClickHouse ingest as a degraded analytics state, falls back to PostgreSQL-backed local summaries for buyer-facing numbers, and stays degraded until an explicit reset/reseed re-establishes a trustworthy baseline.
+
+- [x] **Unit 7: Reconcile buyer-facing UX, docs, and demo operations**
 
 **Goal:** Keep the evolved system understandable and presentation-safe.
 
@@ -589,28 +595,28 @@ Rejected because it conflicts with the explicit architecture direction that Rust
 
 ### Functional Requirements
 
-- [ ] The system can be started locally through Docker Compose.
-- [ ] The dashboard continues to show one coherent proof path from config to request to evidence.
-- [ ] Go persists control-plane state in PostgreSQL.
-- [ ] Rust enforces a documented request precedence order.
-- [ ] Nginx forwards trusted ingress traffic without becoming the CDN logic layer.
-- [ ] Redis-backed counters can drive at least one buyer-visible enforcement path.
-- [ ] ClickHouse-backed analytics are available through Go summary APIs.
-- [ ] Request proof, edge logs, API logs, and analytics correlate by stable request or trace IDs.
+- [x] The system can be started locally through Docker Compose.
+- [x] The dashboard continues to show one coherent proof path from config to request to evidence.
+- [x] Go persists control-plane state in PostgreSQL.
+- [x] Rust enforces a documented request precedence order.
+- [x] Nginx forwards trusted ingress traffic without becoming the CDN logic layer.
+- [x] Redis-backed counters can drive at least one buyer-visible enforcement path.
+- [x] ClickHouse-backed analytics are available through Go summary APIs.
+- [x] Request proof, edge logs, API logs, and analytics correlate by stable request or trace IDs.
 
 ### Non-Functional Requirements
 
-- [ ] The demo remains honest about what is production-ready versus product-direction architecture.
-- [ ] Analytics freshness is explicitly surfaced when not immediate.
-- [ ] Reset/reseed behavior is documented across all backing systems.
-- [ ] Inter-service networking no longer depends on hardcoded localhost assumptions.
+- [x] The demo remains honest about what is production-ready versus product-direction architecture.
+- [x] Analytics freshness is explicitly surfaced when not immediate.
+- [x] Reset/reseed behavior is documented across all backing systems.
+- [x] Inter-service networking no longer depends on hardcoded localhost assumptions.
 
 ### Quality Gates
 
-- [ ] Each phase preserves the current cache proof loop before the next phase begins.
-- [ ] Request precedence is documented in code-facing docs and presenter docs.
-- [ ] Failure modes for PostgreSQL, Redis, ClickHouse, and Nginx are represented as bounded demo states.
-- [ ] Documentation is updated for service map, runbook, evidence interpretation, and claim guardrails.
+- [x] Each phase preserves the current cache proof loop before the next phase begins.
+- [x] Request precedence is documented in code-facing docs and presenter docs.
+- [x] Failure modes for PostgreSQL, Redis, ClickHouse, and Nginx are represented as bounded demo states.
+- [x] Documentation is updated for service map, runbook, evidence interpretation, and claim guardrails.
 
 ## Success Metrics
 

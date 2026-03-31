@@ -17,13 +17,14 @@ export INTERNAL_API_TOKEN=replace-with-internal-api-token
 curl -X POST http://127.0.0.1:3000/api/reset -H "x-reset-token: $DEMO_RESET_TOKEN"
 ```
 
-Reset now fails closed if PostgreSQL, Redis, or the Rust cache reset cannot be completed.
+Reset now fails closed if PostgreSQL, ClickHouse, Redis, or the Rust cache reset cannot be completed.
 
 ## What reset clears today
 
 - PostgreSQL-backed domain records
 - PostgreSQL-backed request events
 - PostgreSQL-backed service logs
+- ClickHouse-backed append-only analytics events
 - Redis-backed rate-limit counters
 - Rust local cache marker files under `/tmp/edge-cache-*`
 - In-memory Go counters and request slices in the running process

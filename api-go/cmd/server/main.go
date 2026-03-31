@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	analyticsstore "cdn-demo/api-go/internal/analytics"
 	"cdn-demo/api-go/internal/db"
 	httpapi "cdn-demo/api-go/internal/http"
 	"cdn-demo/api-go/internal/state"
@@ -27,7 +28,7 @@ func main() {
 	}
 	defer client.Close()
 
-	store := state.NewStore(client)
+	store := state.NewStore(client, analyticsstore.OpenFromEnv())
 	server := httpapi.NewServer(store)
 	mux := http.NewServeMux()
 	server.Register(mux)

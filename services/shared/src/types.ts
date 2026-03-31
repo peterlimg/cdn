@@ -95,7 +95,7 @@ export type AnalyticsSummary = {
   quotaUsedBytes: number
   quotaLimitBytes: number
   quotaReached: boolean
-  freshness: "live" | "updating"
+  freshness: "live" | "updating" | "degraded"
 }
 
 export type DashboardSnapshot = {

@@ -15,6 +15,14 @@ export default async function AnalyticsPage() {
           bandwidth savings, and free-plan quota consumption into one buyer-readable story after the
           Rust edge and Go API have already explained the request path.
         </p>
+        <p className="muted small">
+          When ClickHouse-backed analytics are delayed or degraded, this page should be read as a
+          derived confirmation layer rather than the immediate truth source.
+        </p>
+        <p className="muted small">
+          `Updating` means the append-only analytics store is catching up. `Degraded` means the
+          dashboard has temporarily fallen back to local event summaries instead.
+        </p>
       </div>
       <AnalyticsPageShell summary={snapshot.analytics} />
     </div>

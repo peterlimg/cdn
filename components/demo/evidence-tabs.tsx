@@ -8,6 +8,7 @@ import type { RequestProof, ServiceLog } from "../../services/shared/src/types"
 
 type Props = {
   domainId: string
+  domainStatus: "ready" | "pending"
   initialProofs: RequestProof[]
   initialEdgeLogs: ServiceLog[]
   initialApiLogs: ServiceLog[]
@@ -16,6 +17,7 @@ type Props = {
 
 export function EvidenceTabs({
   domainId,
+  domainStatus,
   initialProofs,
   initialEdgeLogs,
   initialApiLogs,
@@ -38,8 +40,6 @@ export function EvidenceTabs({
     await onRequestComplete?.(proof)
   }
 
-  const apiExpectedEmpty = latestProof?.cacheStatus === "HIT"
-
   return (
     <div className="stack">
       <div className="row">
@@ -49,10 +49,15 @@ export function EvidenceTabs({
       </div>
 
       {tab === "proof" ? (
-        <RequestProofPanel domainId={domainId} initialProofs={initialProofs} onRequestComplete={refreshLogs} />
+        <RequestProofPanel
+          domainId={domainId}
+          domainStatus={domainStatus}
+          initialProofs={initialProofs}
+          onRequestComplete={refreshLogs}
+        />
       ) : null}
       {tab === "edge" ? <EdgeLogPanel logs={edgeLogs} /> : null}
-      {tab === "api" ? <ApiLogPanel logs={apiLogs} expectedEmpty={apiExpectedEmpty} /> : null}
+      {tab === "api" ? <ApiLogPanel logs={apiLogs} /> : null}
     </div>
   )
 }

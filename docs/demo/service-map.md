@@ -27,6 +27,12 @@
 9. Rust edge sends proof + edge logs back to Go for aggregation.
 10. Next.js renders request proof, edge logs, API logs, and analytics from those service-backed responses.
 
+## Real proxy route
+
+- The Rust edge now also exposes a real proxied asset route for rehearsal traffic.
+- Through ingress, a presenter can hit `GET /edge/proxy/assets/demo.css?domainId=<zone-id>` and receive the actual response body from origin or cache.
+- The response includes `X-Request-Id`, `X-Trace-Id`, and `X-Cache-Status` headers so the proxied response can still be correlated back to proof and logs.
+
 ## Ingress boundary
 
 - Nginx is currently an ingress helper for local deployment and future TLS termination.
@@ -37,5 +43,5 @@
 
 - Request proof: immediate source of truth for one request.
 - Rust edge logs: why the edge made the request decision.
-- Go API logs: why the control plane participated, or why it was expected to be quiet.
+- Go API logs: why the control plane participated in config lookup, rate limiting, ingest, and analytics behavior.
 - Analytics: buyer-facing confirmation layer derived from the service-backed event stream.

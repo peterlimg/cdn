@@ -1,19 +1,19 @@
 import React from "react"
 import type { ServiceLog } from "../../services/shared/src/types"
 
-export function ApiLogPanel({ logs, expectedEmpty }: { logs: ServiceLog[]; expectedEmpty?: boolean }) {
+export function ApiLogPanel({ logs }: { logs: ServiceLog[] }) {
   return (
     <div className="card stack">
       <div>
         <span className="eyebrow">Go API logs</span>
         <h3>Why the control plane did or did not participate</h3>
+        <p className="muted small">
+          These logs explain config lookup, rate limiting, ingest, and analytics behavior. In the
+          current architecture, each request still produces control-plane participation for config and evidence handling.
+        </p>
       </div>
       {logs.length === 0 ? (
-        <div className="note">
-          {expectedEmpty
-            ? "Expected empty: a cache hit can be fully satisfied by the Rust edge without new Go API work for that request."
-            : "No API logs yet. Publish a policy or send a baseline request to show Go service activity."}
-        </div>
+        <div className="note">No API logs yet. Publish a policy or send a request to show Go service activity.</div>
       ) : (
         <div className="proof-log">
           {logs.map((log) => (

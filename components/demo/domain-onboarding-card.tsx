@@ -22,8 +22,20 @@ export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
         </div>
         <div className="small muted">
           {domain.status === "ready"
-            ? "This domain is configured to route through the Rust edge and can produce live request proof."
-            : "This domain shows onboarding shape only. DNS and origin are visible, but live traffic remains blocked until the state changes to ready."}
+            ? "This domain record is ready to route through Nginx into the Rust edge, so it can produce live proof, service logs, and analytics confirmation."
+            : "This domain record shows the same control-plane shape as a live zone, but Rust intentionally blocks traffic until readiness changes to ready."}
+        </div>
+      </div>
+
+      <div className="list-item stack">
+        <div>
+          <span className="eyebrow">Presenter guidance</span>
+          <h4>What to say here</h4>
+        </div>
+        <div className="small muted">
+          {domain.status === "ready"
+            ? "Call out that the buyer is looking at a real control-plane record whose readiness mode allows immediate edge proof in the demo."
+            : "Call out that onboarding shape is real, but the product is honestly showing a non-live state instead of pretending verification already happened."}
         </div>
       </div>
     </div>

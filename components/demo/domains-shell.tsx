@@ -57,7 +57,7 @@ export function DomainsShell({ domains }: { domains: DomainRecord[] }) {
         <h3>Create the first demo zone</h3>
         <p className="muted small">
           The client-facing story uses a ready domain for live traffic proof. A pending domain shows
-          the exact same config sections, but the Rust edge will block traffic until the state is ready.
+          the same control-plane sections, but the Rust edge will block traffic until readiness changes.
         </p>
         <div className="row">
           <Link className="button" href="/domains/new?mode=ready">

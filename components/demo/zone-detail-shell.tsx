@@ -58,6 +58,7 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
 
       <div className="grid two-col">
         <DomainConfigSections
+          domainId={domain.id}
           origin={domain.origin}
           dnsRecords={domain.dnsRecords ?? []}
           proxyMode={domain.proxyMode}
@@ -69,6 +70,7 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
       <div className="grid two-col">
         <EvidenceTabs
           domainId={domain.id}
+          domainStatus={domain.status}
           initialProofs={events}
           initialEdgeLogs={edgeLogs}
           initialApiLogs={apiLogs}

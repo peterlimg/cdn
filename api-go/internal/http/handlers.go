@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -64,6 +65,10 @@ func (s *Server) Register(mux *http.ServeMux) {
 				writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "degraded", "error": "redis unavailable"})
 				return
 			}
+		}
+		if err := s.store.AnalyticsHealthy(ctx); err != nil {
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "analytics": "degraded", "warning": "clickhouse unavailable, falling back to local events"})
+			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -177,6 +182,10 @@ func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.Reset(); err != nil {
+		if errors.Is(err, state.ErrAnalyticsReset) {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "clickhouse reset failed"})
+			return
+		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "postgres reset failed"})
 		return
 	}

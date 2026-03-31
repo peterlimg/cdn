@@ -30,6 +30,12 @@ export function AnalyticsSummaryCards({ summary }: { summary: AnalyticsSummary }
         <span className="kpi-label">Blocked</span>
         <div className="kpi-value">{summary.blockedRequests}</div>
       </div>
+      <div className="kpi">
+        <span className="kpi-label">Freshness</span>
+        <div className="kpi-value">
+          {summary.freshness === "live" ? "Live" : summary.freshness === "degraded" ? "Degraded" : "Updating"}
+        </div>
+      </div>
     </div>
   )
 }

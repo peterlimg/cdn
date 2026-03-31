@@ -7,6 +7,10 @@ export function EdgeLogPanel({ logs }: { logs: ServiceLog[] }) {
       <div>
         <span className="eyebrow">Rust edge logs</span>
         <h3>Why the edge served, cached, or blocked</h3>
+        <p className="muted small">
+          Use this when the buyer wants the operational reason behind the proof row, including cache,
+          WAF, quota, rate-limit, origin, and proxy behavior.
+        </p>
       </div>
       {logs.length === 0 ? (
         <div className="note">No edge logs yet. Send a request through the Rust edge to populate this panel.</div>

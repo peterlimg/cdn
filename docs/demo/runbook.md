@@ -3,6 +3,7 @@
 ## Start the demo locally
 
 ```bash
+docker compose up postgres redis clickhouse -d
 npm install
 npm run dev
 ```
@@ -12,6 +13,8 @@ This starts:
 - Next.js UI on `http://127.0.0.1:3000`
 - Go API/control service on `http://127.0.0.1:4001`
 - Rust edge service on `http://127.0.0.1:4002`
+
+The local dev path now still depends on PostgreSQL, Redis, and ClickHouse running first. Docker Compose is the simplest way to provide those backing services.
 
 Service endpoints are now environment-aware. Local development still defaults to `127.0.0.1`, while Docker Compose uses container service names.
 
@@ -39,6 +42,8 @@ This starts the same demo stack with an Nginx ingress in front of the existing t
 
 Compose waits for the Go API health check before starting the Rust edge, waits for both backend services before starting the UI, and starts Nginx after the UI and edge are available.
 
+The Rust container now builds without system OpenSSL by using `reqwest` with `rustls`, so the Compose path does not rely on Alpine-specific OpenSSL packages.
+
 Open `http://127.0.0.1:8080` for the ingress-backed demo path. The UI is still also directly reachable on `http://127.0.0.1:3000` for debugging.
 
 The Go control plane now persists domain, request, and log state in PostgreSQL. Restarting the API container no longer clears domain or revision data by itself.
@@ -61,7 +66,7 @@ docker compose exec redis redis-cli ping
 curl -X POST http://127.0.0.1:3000/api/reset -H "x-reset-token: $DEMO_RESET_TOKEN"
 ```
 
-That reset now clears PostgreSQL-backed control-plane tables, Redis-backed rate-limit counters, and Rust edge cache marker files.
+That reset now clears PostgreSQL-backed control-plane tables, ClickHouse-backed analytics events, Redis-backed rate-limit counters, and Rust edge cache marker files.
 
 ## Reseed the default demo domain
 
@@ -88,6 +93,18 @@ That recreates the default ready-domain baseline without using the UI shortcut r
 10. Continue until quota is reached
 
 The default domain rate limit is intentionally set above the quota walkthrough so the main demo reliably reaches `BLOCKED_QUOTA` first. To show rate limiting separately, reseed a fresh domain and send more than 10 requests inside one 60-second window.
+
+## Real proxied asset check
+
+After reseeding a ready domain, you can verify the real edge proxy path directly:
+
+```bash
+curl -i "http://127.0.0.1:3000/api/proxy-check?domainId=<zone-id>&path=%2Fassets%2Fdemo.css"
+```
+
+The first request should return `X-Cache-Status: BYPASS` or `MISS` depending on cache policy. A repeated request with cache enabled should return `X-Cache-Status: HIT`.
+
+The same proxied asset URL is now shown in the zone detail page under **Domain configuration** so the presenter does not need to rebuild it manually during a walkthrough. The UI-hosted proxy-check route works both on the direct UI port and through ingress-backed demos.
 
 ## Useful logs during local development
 

@@ -6,10 +6,12 @@ import type { RequestProof } from "../../services/shared/src/types"
 
 export function RequestProofPanel({
   domainId,
+  domainStatus,
   initialProofs,
   onRequestComplete,
 }: {
   domainId: string
+  domainStatus: "ready" | "pending"
   initialProofs: RequestProof[]
   onRequestComplete?: (proof: RequestProof) => Promise<void> | void
 }) {
@@ -31,8 +33,8 @@ export function RequestProofPanel({
     <div className="card stack">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <span className="eyebrow">Live proof</span>
-          <h3>Request path evidence</h3>
+          <span className="eyebrow">{domainStatus === "ready" ? "Live proof" : "Blocked proof"}</span>
+          <h3>{domainStatus === "ready" ? "Request path evidence" : "Readiness-bound request evidence"}</h3>
         </div>
         <button
           className="button"
@@ -42,18 +44,23 @@ export function RequestProofPanel({
           })}
           type="button"
         >
-          {isPending ? "Sending request..." : "Send request through edge"}
+          {isPending ? "Sending request..." : domainStatus === "ready" ? "Send request through edge" : "Show blocked request proof"}
         </button>
       </div>
 
       <p className="muted small">
         This panel is the buyer-readable summary of one request. Use the tabs beside it to drill into
-        Rust edge logs and Go API logs for the same request ID and trace ID.
+        Rust edge logs and Go API logs for the same request ID and trace ID. If analytics later show
+        `Updating` or `Degraded`, this panel is still the immediate truth for the request path.
       </p>
 
       <div className="proof-log">
         {proofs.length === 0 ? (
-          <div className="note">No edge requests yet. Publish a policy, then send traffic to produce proof.</div>
+          <div className="note">
+            {domainStatus === "ready"
+              ? "No edge requests yet. Publish a policy, then send traffic to produce proof."
+              : "No blocked proof yet. Send one request to show how pending zones stay blocked by design."}
+          </div>
         ) : (
           proofs.map((proof) => (
             <div className="proof-entry" key={proof.requestId}>

@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server"
-import {
-  DEMO_RESET_TOKEN,
-  GO_API_URL,
-  INTERNAL_API_TOKEN,
-} from "../../../lib/demo/service-endpoints"
+import { DEMO_RESET_TOKEN, GO_API_URL } from "../../../lib/demo/service-endpoints"
 
 type ReseedBody = {
   hostname?: string
@@ -16,11 +12,12 @@ const defaultHostnames = {
 } as const
 
 export async function POST(request: Request) {
-  if (!DEMO_RESET_TOKEN || !INTERNAL_API_TOKEN) {
+  const requireToken = request.headers.get("x-reset-token") !== null
+  if (requireToken && !DEMO_RESET_TOKEN) {
     return NextResponse.json({ error: "reseed is not configured" }, { status: 503 })
   }
 
-  if (request.headers.get("x-reset-token") !== DEMO_RESET_TOKEN) {
+  if (requireToken && request.headers.get("x-reset-token") !== DEMO_RESET_TOKEN) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 })
   }
 

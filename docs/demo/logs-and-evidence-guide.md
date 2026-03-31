@@ -17,9 +17,10 @@
 - Shows config lookup, policy publish, event ingest, and dashboard summary behavior.
 - Answer to: `Where did the API service participate?`
 
-## Expected-empty cases
-
-- A cache hit may not generate new meaningful Go API activity for that exact request beyond prior config lookup or prior ingest. The UI should explain this as expected-empty, not as a missing system.
+### Analytics
+- Best for buyer-readable confirmation, not first-response debugging.
+- Now intended to come from ClickHouse-backed append-only request events when available.
+- If freshness is `updating` or `degraded`, prefer request proof and service logs as the immediate truth.
 
 ## Correlation keys
 

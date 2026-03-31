@@ -92,6 +92,17 @@ pub struct ServiceLog {
     pub timestamp: String,
 }
 
+pub struct ServedResponse {
+    pub status_code: u16,
+    pub content_type: String,
+    pub body: Vec<u8>,
+}
+
+pub struct EvaluatedRequest {
+    pub proof: RequestProof,
+    pub response: Option<ServedResponse>,
+}
+
 #[derive(Serialize)]
 struct IngestPayload {
     proof: RequestProof,
@@ -114,6 +125,10 @@ impl fmt::Display for RequestError {
 }
 
 pub async fn evaluate_request(client: &Client, request: RequestBody, ingress_request_id: Option<String>) -> Result<RequestProof, RequestError> {
+    Ok(execute_request(client, request, ingress_request_id).await?.proof)
+}
+
+pub async fn execute_request(client: &Client, request: RequestBody, ingress_request_id: Option<String>) -> Result<EvaluatedRequest, RequestError> {
     let runtime = config::load_runtime_config();
     let request_id = ingress_request_id.unwrap_or_else(|| format!("req-{}", &Uuid::new_v4().to_string()[..8]));
     let trace_id = format!("trace-{}", &Uuid::new_v4().to_string()[..8]);
@@ -140,13 +155,14 @@ pub async fn evaluate_request(client: &Client, request: RequestBody, ingress_req
     let timestamp = chrono_like_timestamp();
     let path = request.path.unwrap_or_else(|| "/assets/demo.css".to_string());
 
-    let (cache_status, disposition, bytes_served, quota_used, message) = if context.domain.status != "ready" {
+    let (cache_status, disposition, bytes_served, quota_used, message, response): (String, String, i32, i32, String, Option<ServedResponse>) = if context.domain.status != "ready" {
         (
             "BLOCKED_PENDING".to_string(),
             "blocked".to_string(),
             0,
             context.quota_used_bytes,
             "Domain is pending setup. Live traffic proof stays blocked until ready.".to_string(),
+            None,
         )
     } else if let Some(waf_message) = waf::evaluate_path(&path) {
         (
@@ -155,14 +171,7 @@ pub async fn evaluate_request(client: &Client, request: RequestBody, ingress_req
             0,
             context.quota_used_bytes,
             waf_message,
-        )
-    } else if context.quota_used_bytes >= context.quota_limit_bytes {
-        (
-            "BLOCKED_QUOTA".to_string(),
-            "blocked".to_string(),
-            0,
-            context.quota_used_bytes,
-            "Free plan bandwidth reached. Add more balance before serving more traffic.".to_string(),
+            None,
         )
     } else {
         let rate_limit = counters::check_rate_limit(
@@ -185,18 +194,33 @@ pub async fn evaluate_request(client: &Client, request: RequestBody, ingress_req
                     rate_limit.1,
                     context.rate_limit_window
                 ),
+                None,
+            )
+        } else if context.quota_used_bytes >= context.quota_limit_bytes {
+            (
+                "BLOCKED_QUOTA".to_string(),
+                "blocked".to_string(),
+                0,
+                context.quota_used_bytes,
+                "Free plan bandwidth reached. Add more balance before serving more traffic.".to_string(),
+                None,
             )
         } else if revision.cache_enabled {
             if let Some(cached) = cache::read_cached_response(&context.domain.id, &revision.id, &path).map_err(RequestError::Upstream)? {
                 (
                     "HIT".to_string(),
                     "served".to_string(),
-                    cached.body_bytes,
-                    context.quota_used_bytes + cached.body_bytes,
+                    cached.body_bytes(),
+                    context.quota_used_bytes + cached.body_bytes(),
                     format!(
                         "Served {} bytes from Rust edge cache for {}.",
-                        cached.body_bytes, path
+                        cached.body_bytes(), path
                     ),
+                    Some(ServedResponse {
+                        status_code: cached.status_code,
+                        content_type: cached.content_type.clone(),
+                        body: cached.body.clone(),
+                    }),
                 )
             } else {
                 match proxy::fetch_origin_response(client, &context.domain.origin, &path, &request_id).await {
@@ -206,12 +230,17 @@ pub async fn evaluate_request(client: &Client, request: RequestBody, ingress_req
                         (
                             "MISS".to_string(),
                             "served".to_string(),
-                            cached.body_bytes,
-                            context.quota_used_bytes + cached.body_bytes,
+                            cached.body_bytes(),
+                            context.quota_used_bytes + cached.body_bytes(),
                             format!(
                                 "Fetched {} bytes from {} and stored the response in Rust edge cache.",
-                                cached.body_bytes, cached.origin_url
+                                cached.body_bytes(), cached.origin_url
                             ),
+                            Some(ServedResponse {
+                                status_code: cached.status_code,
+                                content_type: cached.content_type.clone(),
+                                body: cached.body.clone(),
+                            }),
                         )
                     }
                     Err(error) => origin_error_outcome(error, context.quota_used_bytes),
@@ -228,6 +257,11 @@ pub async fn evaluate_request(client: &Client, request: RequestBody, ingress_req
                         "Fetched {} bytes from {} with cache policy disabled.",
                         origin.body_bytes(), origin.origin_url
                     ),
+                    Some(ServedResponse {
+                        status_code: origin.status_code,
+                        content_type: origin.content_type.clone(),
+                        body: origin.body.clone(),
+                    }),
                 ),
                 Err(error) => origin_error_outcome(error, context.quota_used_bytes),
             }
@@ -274,10 +308,10 @@ pub async fn evaluate_request(client: &Client, request: RequestBody, ingress_req
         .error_for_status()
         .map_err(|error| map_status_error(error, "edge ingest failed"))?;
 
-    Ok(proof)
+    Ok(EvaluatedRequest { proof, response })
 }
 
-fn origin_error_outcome(error: proxy::OriginFetchError, quota_used_bytes: i32) -> (String, String, i32, i32, String) {
+fn origin_error_outcome(error: proxy::OriginFetchError, quota_used_bytes: i32) -> (String, String, i32, i32, String, Option<ServedResponse>) {
     let message = match error {
         proxy::OriginFetchError::NotFound(message) => message,
         proxy::OriginFetchError::Upstream(message) => message,
@@ -288,6 +322,7 @@ fn origin_error_outcome(error: proxy::OriginFetchError, quota_used_bytes: i32) -
         0,
         quota_used_bytes,
         format!("Origin request could not be served: {message}"),
+        None,
     )
 }
 
