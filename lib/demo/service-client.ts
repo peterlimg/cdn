@@ -1,0 +1,63 @@
+import { GO_API_URL } from "./service-endpoints"
+import type {
+  DashboardSnapshot,
+  DomainRecord,
+  ServiceLog,
+} from "../../services/shared/src/types"
+
+async function parseJson<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(text || `Service request failed with ${response.status}`)
+  }
+
+  return (await response.json()) as T
+}
+
+export async function fetchDashboardSnapshot(domainId?: string): Promise<DashboardSnapshot> {
+  const url = new URL(`${GO_API_URL}/dashboard`)
+  if (domainId) {
+    url.searchParams.set("domainId", domainId)
+  }
+
+  const response = await fetch(url, { cache: "no-store" })
+  return parseJson<DashboardSnapshot>(response)
+}
+
+export async function fetchDomains(): Promise<DomainRecord[]> {
+  const response = await fetch(`${GO_API_URL}/domains`, { cache: "no-store" })
+  return parseJson<DomainRecord[]>(response)
+}
+
+export async function fetchDomain(domainId: string): Promise<DomainRecord | null> {
+  const response = await fetch(`${GO_API_URL}/domains/${domainId}`, { cache: "no-store" })
+
+  if (response.status === 404) {
+    return null
+  }
+
+  return parseJson<DomainRecord>(response)
+}
+
+export async function createDomain(input: { hostname: string; mode: "ready" | "pending" }) {
+  const response = await fetch(`${GO_API_URL}/domains`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    cache: "no-store",
+  })
+
+  return parseJson<DomainRecord>(response)
+}
+
+export async function fetchLogs(domainId: string, service: "edge" | "api", requestId?: string) {
+  const url = new URL(`${GO_API_URL}/logs`)
+  url.searchParams.set("domainId", domainId)
+  url.searchParams.set("service", service)
+  if (requestId) {
+    url.searchParams.set("requestId", requestId)
+  }
+
+  const response = await fetch(url, { cache: "no-store" })
+  return parseJson<ServiceLog[]>(response)
+}

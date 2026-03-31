@@ -1,0 +1,33 @@
+{
+  "name": "cdn-demo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n ui,api,edge \"npm run dev:ui\" \"npm run dev:api\" \"npm run dev:edge\"",
+    "dev:ui": "next dev",
+    "dev:api": "cd api-go && go run ./cmd/server",
+    "dev:edge": "cd edge-rust && cargo run",
+    "build": "next build",
+    "start": "next start",
+    "start:ui": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "next": "16.2.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.2.0",
+    "@testing-library/user-event": "14.6.1",
+    "@types/node": "22.14.0",
+    "@types/react": "19.0.10",
+    "@types/react-dom": "19.0.4",
+    "concurrently": "9.1.2",
+    "jsdom": "26.0.0",
+    "typescript": "5.8.3",
+    "vitest": "3.1.1"
+  }
+}

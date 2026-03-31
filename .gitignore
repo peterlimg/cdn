@@ -1,0 +1,21 @@
+node_modules/
+.next/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.*
+
+# OS/editor junk
+.DS_Store
+.idea/
+.vscode/
+
+# Local runtime artifacts
+*.log
+tmp/
