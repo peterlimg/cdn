@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"cdn-demo/api-go/internal/db"
 	httpapi "cdn-demo/api-go/internal/http"
 	"cdn-demo/api-go/internal/state"
 )
@@ -15,8 +16,18 @@ func main() {
 		port = "4001"
 	}
 	addr := ":" + port
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		databaseURL = "postgres://postgres:postgres@127.0.0.1:5432/cdn_demo?sslmode=disable"
+	}
 
-	store := state.NewStore()
+	client, err := db.Open(databaseURL)
+	if err != nil {
+		log.Fatalf("failed to connect to postgres: %v", err)
+	}
+	defer client.Close()
+
+	store := state.NewStore(client)
 	server := httpapi.NewServer(store)
 	mux := http.NewServeMux()
 	server.Register(mux)

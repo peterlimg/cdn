@@ -7,6 +7,7 @@
 - Analytics are derived from request events and serve as confirmation, not the only proof.
 - The quota-reached state is a real demo behavior on the request path.
 - The long-term product architecture is expected to move toward Rust edge and Go control-plane services.
+- Nginx is used as temporary ingress and future TLS termination support, while Rust remains the edge runtime that makes request decisions.
 
 ## Forbidden claims
 
@@ -15,6 +16,7 @@
 - Do not claim enterprise WAF, bot management, or DDoS mitigation exists.
 - Do not imply BTCPay billing or customer balance top-ups are implemented unless that work is actually added later.
 - Do not describe seeded or pre-verified states as if they were discovered live during the demo.
+- Do not describe Nginx as the CDN edge logic layer. It is only ingress and proxy support in this phase.
 
 ## Standard answers
 
@@ -32,3 +34,6 @@
 
 - `Why not show WAF too?`
   The first wedge is caching because it demonstrates core CDN value most clearly. Security controls would be the next layer after the request-proof loop is in place.
+
+- `Why is Nginx here if Rust is the edge?`
+  Nginx is handling ingress concerns for the demo environment, such as proxying and future TLS termination. The actual request-path decisioning still happens in Rust.

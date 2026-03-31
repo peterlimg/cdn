@@ -2,6 +2,9 @@
 
 ## Runtime split
 
+- `nginx/` (Nginx)
+  Temporary ingress boundary for local demos. It can terminate TLS later and forwards trusted request context to the Rust edge or dashboard, but it does not own CDN logic.
+
 - `app/` (Next.js / TypeScript)
   Buyer-facing dashboard UI and thin route proxies.
 
@@ -13,13 +16,21 @@
 
 ## Demo request path
 
-1. User changes configuration in the Next.js dashboard.
-2. Next.js calls the Go API for domain/config state changes.
-3. User sends a request through the Rust edge.
-4. Rust edge fetches edge context from Go.
-5. Rust edge evaluates bypass, miss, hit, or blocked state.
-6. Rust edge sends proof + edge logs back to Go for aggregation.
-7. Next.js renders request proof, edge logs, API logs, and analytics from those service-backed responses.
+1. User opens the dashboard through Nginx or directly through the UI service.
+2. User changes configuration in the Next.js dashboard.
+3. Next.js calls the Go API for domain/config state changes.
+4. User can send a request to the Rust edge either directly or through the Nginx ingress route.
+5. Nginx forwards trusted request metadata and request ID headers when it is in the path.
+6. Rust edge fetches edge context from Go.
+7. Rust edge evaluates bypass, miss, hit, or blocked state.
+8. Rust edge sends proof + edge logs back to Go for aggregation.
+9. Next.js renders request proof, edge logs, API logs, and analytics from those service-backed responses.
+
+## Ingress boundary
+
+- Nginx is currently an ingress helper for local deployment and future TLS termination.
+- Rust remains the owner of request-path behavior, cache decisions, and edge evidence.
+- Request IDs are accepted from Nginx when present. Rust remains authoritative for proof records emitted into the demo evidence flow.
 
 ## Truth boundaries
 

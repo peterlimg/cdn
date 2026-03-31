@@ -370,7 +370,7 @@ erDiagram
 **Verification:**
 - Another engineer can run the existing demo path from Docker Compose without local toolchain choreography.
 
-- [ ] **Unit 2: Add Nginx as the temporary ingress boundary**
+- [x] **Unit 2: Add Nginx as the temporary ingress boundary**
 
 **Goal:** Introduce a public-facing proxy/TLS layer while keeping CDN logic in Rust.
 
