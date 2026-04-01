@@ -1,6 +1,6 @@
 export type DomainStatus = "pending" | "ready"
 
-export type SetupPath = "existing-origin" | "simple-static" | "demo-static"
+export type SetupPath = "existing-origin" | "network-static" | "demo-static"
 
 export type SetupStage =
   | "created"

@@ -6,10 +6,19 @@ import { NewDomainForm } from "../../components/demo/new-domain-form"
 const push = vi.fn()
 const refresh = vi.fn()
 let searchMode = "ready"
+let searchSetupPath: string | null = null
+let searchDeploy: string | null = null
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh }),
-  useSearchParams: () => ({ get: (key: string) => (key === "mode" ? searchMode : null) }),
+  useSearchParams: () => ({
+    get: (key: string) => {
+      if (key === "mode") return searchMode
+      if (key === "setupPath") return searchSetupPath
+      if (key === "deploy") return searchDeploy
+      return null
+    },
+  }),
 }))
 
 describe("new domain form", () => {
@@ -17,6 +26,8 @@ describe("new domain form", () => {
     push.mockReset()
     refresh.mockReset()
     searchMode = "ready"
+    searchSetupPath = null
+    searchDeploy = null
   })
 
   it("preserves a typed hostname when readiness mode changes", () => {
@@ -42,9 +53,9 @@ describe("new domain form", () => {
   it("switches the origin placeholder value when the setup path changes", () => {
     render(<NewDomainForm />)
 
-    fireEvent.change(screen.getByLabelText("Origin path"), { target: { value: "simple-static" } })
+    fireEvent.change(screen.getByLabelText("Origin path"), { target: { value: "network-static" } })
 
-    expect(screen.getByDisplayValue("http://127.0.0.1:3000/origin")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("http://ready-origin:80")).toBeInTheDocument()
   })
 
   it("renders project and origin fields for real site setup", () => {
@@ -53,5 +64,15 @@ describe("new domain form", () => {
     expect(screen.getByLabelText("Project name")).toBeInTheDocument()
     expect(screen.getByLabelText("Origin URL")).toBeInTheDocument()
     expect(screen.getByText("Create site and continue setup")).toBeInTheDocument()
+  })
+
+  it("shows the separate static deployment copy when deploy mode is selected", () => {
+    searchDeploy = "static"
+
+    render(<NewDomainForm />)
+
+    expect(screen.getByText("Deploy a static site onto the network")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("http://ready-origin:80")).toBeInTheDocument()
+    expect(screen.getByText(/Separate deploy flow:/)).toBeInTheDocument()
   })
 })

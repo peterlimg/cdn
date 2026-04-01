@@ -10,7 +10,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const body = (await request.json()) as {
     projectName?: string
     origin?: string
-    setupPath?: "existing-origin" | "simple-static" | "demo-static"
+    setupPath?: "existing-origin" | "network-static" | "demo-static"
   }
 
   if (!body.origin || !body.setupPath) {

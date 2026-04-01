@@ -32,7 +32,7 @@ export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
       <div className="list-item stack">
         <div>
           <span className="eyebrow">Current setup</span>
-          <h4>{domain.setupPath === "existing-origin" ? "Existing origin connected" : domain.setupPath === "simple-static" ? "Simple static origin path" : "Demo static origin path"}</h4>
+          <h4>{domain.setupPath === "existing-origin" ? "Existing origin connected" : domain.setupPath === "network-static" ? "Network static deployment path" : "Demo static origin path"}</h4>
         </div>
         <div className="small muted">
           Origin status: {domain.originStatus || "pending"}. DNS status: {domain.dnsStatus || "pending"}. Setup stage: {domain.setupStage || "created"}.

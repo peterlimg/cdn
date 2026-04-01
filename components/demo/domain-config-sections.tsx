@@ -183,12 +183,12 @@ export function DomainConfigSections({
               className="select"
               id={`setup-path-${domainId}`}
               onChange={(event) => setSetupPathValue(event.target.value)}
-              value={setupPathValue}
-            >
-              <option value="existing-origin">Connect an existing static origin</option>
-              <option value="simple-static">Deploy a simple static origin</option>
-              <option value="demo-static">Use a demo static origin</option>
-            </select>
+            value={setupPathValue}
+          >
+            <option value="existing-origin">Connect an existing static origin</option>
+            <option value="network-static">Deploy a static site on the network</option>
+            <option value="demo-static">Use a demo static origin</option>
+          </select>
           </div>
         </div>
         <div className="field">

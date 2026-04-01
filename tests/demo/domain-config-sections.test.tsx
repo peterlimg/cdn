@@ -10,12 +10,12 @@ vi.mock("next/navigation", () => ({
 describe("domain config sections", () => {
   it("shows the real proxied asset check url for the current domain", () => {
     render(
-      <DomainConfigSections
-        domainId="zone-123"
-        projectName="Marketing site"
-        origin="http://ui:3000/origin"
-        setupPath="simple-static"
-        setupStage="origin-configured"
+        <DomainConfigSections
+          domainId="zone-123"
+          projectName="Marketing site"
+          origin="http://ui:3000/origin"
+          setupPath="network-static"
+          setupStage="origin-configured"
         originStatus="healthy"
         originValidationMessage="Origin format looks valid for CDN routing."
         lastOriginCheckAt="2026-03-31T23:22:00Z"

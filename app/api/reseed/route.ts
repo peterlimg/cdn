@@ -6,7 +6,7 @@ type ReseedBody = {
   mode?: "ready" | "pending"
   projectName?: string
   origin?: string
-  setupPath?: "existing-origin" | "simple-static" | "demo-static"
+  setupPath?: "existing-origin" | "network-static" | "demo-static"
 }
 
 const defaultHostnames = {

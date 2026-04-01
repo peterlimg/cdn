@@ -56,15 +56,14 @@ export function DomainsShell({ domains }: { domains: DomainRecord[] }) {
         <span className="eyebrow">Quick start</span>
         <h3>Create the first site</h3>
         <p className="muted small">
-          Start with an existing static origin or a simple static origin. If you want the first proof path
-          immediately, choose the ready setup state. If not, keep verification pending and finish setup first.
+          Start with an existing origin or take the separate static deployment path that provisions a network site before attaching it to the CDN.
         </p>
         <div className="row">
           <Link className="button" href="/domains/new?mode=ready&setupPath=existing-origin">
             Connect existing origin
           </Link>
-          <Link className="button-secondary" href="/domains/new?mode=pending&setupPath=simple-static">
-            Deploy simple static site
+          <Link className="button-secondary" href="/domains/deploy-static?mode=ready&setupPath=network-static">
+            Deploy static site
           </Link>
         </div>
       </section>

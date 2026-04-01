@@ -128,7 +128,7 @@ func validateOrigin(origin string, setupPath string) (string, string) {
 	if host == "" {
 		return "failed", "Origin host is required."
 	}
-	if setupPath != "demo-static" {
+	if setupPath != "demo-static" && setupPath != "network-static" {
 		if strings.EqualFold(host, "localhost") {
 			return "failed", "Localhost origins are only allowed for the demo static path."
 		}
