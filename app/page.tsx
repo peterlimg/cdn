@@ -1,52 +1,34 @@
 import React from "react"
 import Link from "next/link"
 import { getSession } from "../lib/auth/session"
+import { fetchDomains } from "../lib/demo/service-client"
+import { DomainsShell } from "../components/demo/domains-shell"
 
 export default async function HomePage() {
   const session = await getSession()
+  const domains = session ? await fetchDomains() : []
+
+  if (session) {
+    return <DomainsShell domains={domains} />
+  }
 
   return (
     <div className="grid">
       <section className="hero">
         <div className="hero-panel">
-          <span className="eyebrow">Real user setup</span>
-          <h2>Sign in, connect a site, publish CDN config, and prove traffic is flowing through the edge.</h2>
+          <span className="eyebrow">Northstar CDN</span>
+          <div className="hero-pill">Pull zones for fast global delivery</div>
+          <h2>Launch pull zones fast.</h2>
           <p className="subtitle">
-            The first slice focuses on a believable setup journey: create a site, connect or deploy a
-            simple static origin, publish a baseline CDN rule, and confirm the result with request proof,
-            logs, and analytics.
+            Create a pull zone, point it at your origin, and confirm that repeated browser requests are served from the CDN instead of the origin.
           </p>
           <div className="hero-actions">
-            <Link className="button" href={session ? "/domains" : "/login"}>
-              {session ? "Continue setup" : "Sign in to start"}
+            <Link className="button" href="/login">
+              Sign in to start
             </Link>
             <Link className="button-secondary" href="/domains/new">
               Create first site
             </Link>
-          </div>
-        </div>
-        <div className="card">
-          <span className="eyebrow">Setup contract</span>
-          <div className="stack">
-            <div>
-              <h3>Real setup states</h3>
-              <p className="muted small">
-                The product must tell the user whether the site is configured, still verifying,
-                applying at edge, or already active.
-              </p>
-            </div>
-            <div>
-              <h3>First live proof</h3>
-              <p className="muted small">
-                Request proof and service logs are the immediate source of truth that setup worked.
-              </p>
-            </div>
-            <div>
-              <h3>Analytics confirmation</h3>
-              <p className="muted small">
-                Analytics confirm the request path after the proof already succeeded.
-              </p>
-            </div>
           </div>
         </div>
       </section>

@@ -14,23 +14,20 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="grid stack">
-      <div>
-        <span className="eyebrow">Derived confirmation</span>
-        <h2>Analytics confirm what the edge already proved.</h2>
-        <p className="muted">
-          This screen is intentionally secondary to request proof. It exists to tie cache behavior,
-          bandwidth savings, and free-plan quota consumption into one buyer-readable story after the
-          Rust edge and Go API have already explained the request path.
+      <section className="surface stack">
+        <div className="section-header">
+          <div>
+            <span className="eyebrow">Analytics</span>
+            <h2 className="section-title">Traffic and cache confirmation</h2>
+            <p className="section-copy muted">
+              Use analytics after request proof to confirm cache behavior, bandwidth savings, and quota usage.
+            </p>
+          </div>
+        </div>
+        <p className="muted small inline-note">
+          `Updating` means ClickHouse is catching up. `Degraded` means the dashboard is temporarily using local event summaries instead.
         </p>
-        <p className="muted small">
-          When ClickHouse-backed analytics are delayed or degraded, this page should be read as a
-          derived confirmation layer rather than the immediate truth source.
-        </p>
-        <p className="muted small">
-          `Updating` means the append-only analytics store is catching up. `Degraded` means the
-          dashboard has temporarily fallen back to local event summaries instead.
-        </p>
-      </div>
+      </section>
       <AnalyticsPageShell summary={snapshot.analytics} />
     </div>
   )

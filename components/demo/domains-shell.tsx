@@ -4,66 +4,84 @@ import { DomainReadinessBadge } from "./domain-readiness-badge"
 import type { DomainRecord } from "../../services/shared/src/types"
 
 export function DomainsShell({ domains }: { domains: DomainRecord[] }) {
+  const readyCount = domains.filter((domain) => domain.status === "ready").length
+  const pendingCount = domains.length - readyCount
+  const liveProofCount = domains.filter((domain) => domain.truthLabel === "live-proof").length
+
   return (
     <div className="grid stack">
-      <section className="card stack">
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "end" }}>
+      <section className="surface stack">
+        <div className="section-header">
           <div>
             <span className="eyebrow">Pull zones</span>
-            <h2 style={{ marginBottom: 8 }}>Connect a site and let the edge pull from your origin.</h2>
-            <p className="muted" style={{ maxWidth: 640 }}>
-              Start with the hostname and origin URL. You can adjust DNS, caching, and verification details after the zone is created.
+            <h2 className="section-title">Your sites</h2>
+            <p className="section-copy muted">
+              Manage the hostnames routed through the edge and continue any zone that still needs setup or proof.
             </p>
           </div>
           <Link className="button" href="/domains/new?mode=ready&setupPath=existing-origin">
-            Add pull zone
+            New zone
           </Link>
         </div>
-      </section>
 
-      <section className="card stack">
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <span className="eyebrow">Zones</span>
-            <h3 style={{ marginBottom: 4 }}>Your connected sites</h3>
-          </div>
-          <div className="small muted">{domains.length} total</div>
-        </div>
-
-        <div className="list">
-          {domains.length === 0 ? (
-            <div className="list-item stack">
-              <h3>No pull zones yet</h3>
-              <p className="muted small">
-                Create one pull zone to connect a hostname to an origin and start testing traffic through the CDN.
+        {domains.length === 0 ? (
+          <div className="empty-state">
+            <div className="stack" style={{ gap: 6 }}>
+              <h3 style={{ marginBottom: 0 }}>No pull zones yet</h3>
+              <p className="muted small" style={{ margin: 0, maxWidth: 560 }}>
+                Add your first hostname and origin to start routing traffic through the CDN.
               </p>
-              <div>
-                <Link className="button" href="/domains/new?mode=ready&setupPath=existing-origin">
-                  Add first pull zone
-                </Link>
+            </div>
+            <Link className="button" href="/domains/new?mode=ready&setupPath=existing-origin">
+              Create pull zone
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="stats-strip">
+              <div className="stat-tile">
+                <span className="stat-label">Total</span>
+                <strong className="stat-value">{domains.length}</strong>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">Ready</span>
+                <strong className="stat-value">{readyCount}</strong>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">Needs setup</span>
+                <strong className="stat-value">{pendingCount}</strong>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">Live proof</span>
+                <strong className="stat-value">{liveProofCount}</strong>
               </div>
             </div>
-          ) : (
-            domains.map((domain) => (
-              <div className="list-item stack" key={domain.id}>
-                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <strong>{domain.projectName || domain.hostname}</strong>
-                    <div className="small muted">{domain.hostname}</div>
-                    <div className="small muted">Origin: {domain.origin}</div>
+
+            <div className="list zone-list">
+              {domains.map((domain) => (
+                <div className="zone-row" key={domain.id}>
+                  <div className="zone-row-main">
+                    <div>
+                      <strong className="zone-row-title">{domain.projectName || domain.hostname}</strong>
+                      <div className="zone-row-meta">
+                        <span>{domain.hostname}</span>
+                        <span className="zone-row-separator" aria-hidden="true" />
+                        <span>Origin {domain.origin}</span>
+                      </div>
+                    </div>
+                    <p className="small muted zone-row-note">{domain.readinessNote}</p>
                   </div>
-                  <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
+                  <div className="zone-row-actions">
+                    <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
+                    <Link className="button-secondary" href={`/domains/${domain.id}`}>
+                      Open zone
+                    </Link>
+                  </div>
                 </div>
-                <p className="small muted">{domain.readinessNote}</p>
-                <div>
-                  <Link className="button-secondary" href={`/domains/${domain.id}`}>
-                    Open zone
-                  </Link>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+              ))}
+            </div>
+          </>
+        )}
       </section>
     </div>
   )

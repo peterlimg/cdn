@@ -31,13 +31,13 @@ export default async function DomainDetailPage({
 
   return (
     <div className="grid stack">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+      <div className="page-header">
         <div>
           <span className="eyebrow">Zone detail</span>
-          <h2 style={{ marginBottom: 0 }}>{domain.hostname}</h2>
+          <h2 className="section-title">{domain.hostname}</h2>
         </div>
         <Link className="button-ghost" href="/domains">
-          Back to domains
+          Back to sites
         </Link>
       </div>
 

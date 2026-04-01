@@ -13,7 +13,7 @@ describe("domains dashboard", () => {
 
   it("shows empty-state guidance before any domains exist", () => {
     render(<DomainsShell domains={domains} />)
-    expect(screen.getByText("No sites yet")).toBeInTheDocument()
+    expect(screen.getByText("No pull zones yet")).toBeInTheDocument()
   })
 
   it("renders the created domain and readiness state", () => {

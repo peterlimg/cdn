@@ -40,6 +40,11 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
 
   return (
     <div className="grid stack">
+      <PolicyRevisionBanner
+        activeRevisionId={domain.activeRevisionId}
+        appliedRevisionId={domain.appliedRevisionId}
+      />
+
       <DomainOnboardingCard domain={domain} />
 
       <DomainConfigSections
@@ -76,13 +81,7 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
           revisionLabel={activeRevision?.label ?? "Unknown revision"}
           onChanged={refreshAfterPolicyChange}
         />
-        <div className="grid stack">
-          <PolicyRevisionBanner
-            activeRevisionId={domain.activeRevisionId}
-            appliedRevisionId={domain.appliedRevisionId}
-          />
-          <AnalyticsPageShell summary={liveSummary} />
-        </div>
+        <AnalyticsPageShell summary={liveSummary} />
       </div>
     </div>
   )

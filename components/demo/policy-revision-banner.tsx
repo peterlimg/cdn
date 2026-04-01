@@ -9,8 +9,9 @@ export function PolicyRevisionBanner({
   const confirmed = activeRevisionId === appliedRevisionId
 
   return (
-    <div className="note">
-      <strong>Active revision:</strong> {activeRevisionId}
+    <div className="surface revision-banner">
+      <div className="revision-banner-label">Active revision</div>
+      <div className="revision-banner-value">{activeRevisionId}</div>
       <div className="small muted">
         Edge apply status: {confirmed ? "confirmed on edge" : `publishing, last applied ${appliedRevisionId}`}
       </div>
