@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
-import { GO_API_URL } from "../../../../lib/demo/service-endpoints"
+import { getGoApiUrl } from "../../../../lib/demo/service-endpoints"
 
 type RouteContext = {
   params: Promise<{ domainId: string }>
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const goApiUrl = getGoApiUrl()
   const { domainId } = await context.params
   const body = (await request.json()) as {
     projectName?: string
@@ -18,7 +19,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "origin and setupPath are required" }, { status: 400 })
   }
 
-  const response = await fetch(`${GO_API_URL}/domains/${domainId}`, {
+  const response = await fetch(`${goApiUrl}/domains/${domainId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -30,6 +31,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function POST(request: Request, context: RouteContext) {
+  const goApiUrl = getGoApiUrl()
   const { domainId } = await context.params
   const body = (await request.json()) as { action?: string }
 
@@ -37,7 +39,7 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "valid domain action is required" }, { status: 400 })
   }
 
-  const response = await fetch(`${GO_API_URL}/domains/${domainId}`, {
+  const response = await fetch(`${goApiUrl}/domains/${domainId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

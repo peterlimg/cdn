@@ -84,6 +84,8 @@ npm run dev:edge   # Rust edge on :4002
 | `DATABASE_URL` | `postgres://postgres:postgres@127.0.0.1:5433/cdn_demo?sslmode=disable` | PostgreSQL connection |
 | `REDIS_URL` | `redis://127.0.0.1:6381/0` | Redis connection |
 | `CLICKHOUSE_URL` | *(empty = disabled)* | ClickHouse connection (analytics degrade gracefully without it) |
+| `CLICKHOUSE_USER` | `default` | ClickHouse HTTP username |
+| `CLICKHOUSE_PASSWORD` | `demo-clickhouse` | ClickHouse HTTP password for local compose |
 | `GO_API_URL` | `http://127.0.0.1:4001` | Go API base URL |
 | `RUST_EDGE_URL` | `http://127.0.0.1:4002` | Rust edge base URL |
 | `SESSION_SECRET` | `northstar-demo-session-secret` | HMAC key for session cookies |

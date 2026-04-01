@@ -29,6 +29,7 @@ type Store struct {
 	db                 *db.Client
 	analytics          analyticsClient
 	analyticsFreshness string
+	analyticsFailure   string
 	domains            map[string]DomainRecord
 	events             []RequestProof
 	logs               []ServiceLog
@@ -46,8 +47,14 @@ type analyticsClient interface {
 
 var ErrAnalyticsReset = errors.New("clickhouse reset failed")
 
+const (
+	analyticsFailureNone   = ""
+	analyticsFailureIngest = "ingest"
+	analyticsFailureQuery  = "query"
+)
+
 func NewStore(client *db.Client, analytics analyticsClient) *Store {
-	store := &Store{db: client, analytics: analytics, analyticsFreshness: "live", domains: map[string]DomainRecord{}}
+	store := &Store{db: client, analytics: analytics, analyticsFreshness: "live", analyticsFailure: analyticsFailureNone, domains: map[string]DomainRecord{}}
 	store.loadPersistedState()
 	return store
 }
@@ -73,6 +80,7 @@ func (s *Store) Reset() error {
 	s.nextDomain = 0
 	s.nextLog = 0
 	s.analyticsFreshness = "live"
+	s.analyticsFailure = analyticsFailureNone
 	return nil
 }
 
@@ -88,6 +96,20 @@ func (s *Store) AnalyticsHealthy(ctx context.Context) error {
 		return nil
 	}
 	return s.analytics.Healthy(ctx)
+}
+
+func (s *Store) AnalyticsWarning() string {
+	if s.analyticsFreshness != "degraded" {
+		return ""
+	}
+	switch s.analyticsFailure {
+	case analyticsFailureIngest:
+		return "clickhouse analytics are in guarded fallback after an earlier ingest failure; reset or reseed restores a trusted baseline"
+	case analyticsFailureQuery:
+		return "clickhouse summary queries are degraded, falling back to local events"
+	default:
+		return "analytics are degraded and falling back to local events"
+	}
 }
 
 func now() string {
@@ -622,8 +644,10 @@ func (s *Store) IngestEdgeEvent(payload EdgeIngestPayload) error {
 		if err := s.analytics.InsertRequestEvent(ctx, event); err != nil {
 			log.Printf("clickhouse analytics ingest failed: %v", err)
 			s.analyticsFreshness = "degraded"
+			s.analyticsFailure = analyticsFailureIngest
 		} else if s.analyticsFreshness != "degraded" {
 			s.analyticsFreshness = "live"
+			s.analyticsFailure = analyticsFailureNone
 		}
 	}
 	if err := s.persistLogLocked(edgeLog); err != nil {
@@ -714,7 +738,7 @@ func (s *Store) Logs(domainID, service, requestID string) []ServiceLog {
 
 func (s *Store) Analytics(domainID string) AnalyticsSummary {
 	if s.analytics != nil && s.analytics.Enabled() {
-		if s.analyticsFreshness == "degraded" {
+		if s.analyticsFreshness == "degraded" && s.analyticsFailure == analyticsFailureIngest {
 			s.mu.Lock()
 			degraded := s.analyticsLocked(domainID)
 			s.mu.Unlock()
@@ -725,9 +749,8 @@ func (s *Store) Analytics(domainID string) AnalyticsSummary {
 		defer cancel()
 		summary, err := s.analytics.QuerySummary(ctx, domainID, quotaLimitBytes)
 		if err == nil {
-			if summary.Status == analyticsstore.QueryStatusLive {
-				s.analyticsFreshness = "live"
-			}
+			s.analyticsFreshness = "live"
+			s.analyticsFailure = analyticsFailureNone
 			return AnalyticsSummary{
 				TotalRequests:   summary.TotalRequests,
 				ServedRequests:  summary.ServedRequests,
@@ -746,6 +769,7 @@ func (s *Store) Analytics(domainID string) AnalyticsSummary {
 		}
 		log.Printf("clickhouse analytics query failed, falling back to postgres-backed events: %v", err)
 		s.analyticsFreshness = "degraded"
+		s.analyticsFailure = analyticsFailureQuery
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

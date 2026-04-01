@@ -16,9 +16,9 @@ export function AnalyticsPageShell({ summary }: { summary: AnalyticsSummary }) {
       ) : null}
       {summary.freshness === "degraded" ? (
         <div className="alert">
-          <strong>Analytics degraded:</strong> ClickHouse-backed analytics are currently unavailable, so
-          this view is falling back to local event summaries. Request proof and service logs remain the
-          immediate source of truth.
+          <strong>Analytics degraded:</strong> this view is using guarded local event summaries after a
+          ClickHouse analytics failure. Request proof and service logs remain the immediate source of
+          truth.
         </div>
       ) : null}
       <QuotaThresholdBanner reached={summary.quotaReached} />

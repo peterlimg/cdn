@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
-import { GO_API_URL } from "../../../lib/demo/service-endpoints"
+import { getGoApiUrl } from "../../../lib/demo/service-endpoints"
 
 export async function GET(request: Request) {
+  const goApiUrl = getGoApiUrl()
   const { searchParams } = new URL(request.url)
-  const url = new URL(`${GO_API_URL}/analytics`)
+  const url = new URL(`${goApiUrl}/analytics`)
   const domainId = searchParams.get("domainId")
   if (domainId) {
     url.searchParams.set("domainId", domainId)

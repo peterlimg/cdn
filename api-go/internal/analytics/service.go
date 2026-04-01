@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -53,9 +55,28 @@ type Summary struct {
 	Status          QueryStatus
 }
 
+type clickhouseInt int
+
+func (v *clickhouseInt) UnmarshalJSON(data []byte) error {
+	trimmed := strings.TrimSpace(string(data))
+	if trimmed == "null" || trimmed == "" {
+		*v = 0
+		return nil
+	}
+	trimmed = strings.Trim(trimmed, `"`)
+	parsed, err := strconv.Atoi(trimmed)
+	if err != nil {
+		return err
+	}
+	*v = clickhouseInt(parsed)
+	return nil
+}
+
 type Service struct {
-	baseURL string
-	client  *http.Client
+	baseURL  string
+	username string
+	password string
+	client   *http.Client
 }
 
 func OpenFromEnv() *Service {
@@ -63,9 +84,15 @@ func OpenFromEnv() *Service {
 	if baseURL == "" {
 		return nil
 	}
+	username := os.Getenv("CLICKHOUSE_USER")
+	if username == "" {
+		username = "default"
+	}
 	return &Service{
-		baseURL: baseURL,
-		client:  &http.Client{Timeout: 3 * time.Second},
+		baseURL:  baseURL,
+		username: username,
+		password: os.Getenv("CLICKHOUSE_PASSWORD"),
+		client:   &http.Client{Timeout: 3 * time.Second},
 	}
 }
 
@@ -81,6 +108,7 @@ func (s *Service) Healthy(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	s.applyAuth(req)
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return err
@@ -109,19 +137,26 @@ func (s *Service) InsertRequestEvent(ctx context.Context, event Event) error {
 		"quota_used_bytes":  event.QuotaUsedBytes,
 		"quota_limit_bytes": event.QuotaLimitBytes,
 		"message":           event.Message,
-		"timestamp":         event.Timestamp,
+		"timestamp":         formatClickHouseTimestamp(event.Timestamp),
 	})
 	if err != nil {
 		return err
 	}
 
-	query := s.baseURL + "/?query=" +
-		"INSERT INTO cdn_demo.request_events FORMAT JSONEachRow"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, query, bytes.NewReader(body))
+	endpoint, err := url.Parse(s.baseURL + "/")
+	if err != nil {
+		return err
+	}
+	params := endpoint.Query()
+	params.Set("query", "INSERT INTO cdn_demo.request_events FORMAT JSONEachRow")
+	endpoint.RawQuery = params.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	s.applyAuth(req)
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return err
@@ -142,6 +177,7 @@ func (s *Service) Reset(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	s.applyAuth(req)
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return err
@@ -182,6 +218,7 @@ FORMAT JSONEachRow`, filter)
 	if err != nil {
 		return Summary{}, err
 	}
+	s.applyAuth(req)
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return Summary{}, err
@@ -193,46 +230,73 @@ FORMAT JSONEachRow`, filter)
 	}
 
 	var row struct {
-		TotalRequests   int    `json:"total_requests"`
-		ServedRequests  int    `json:"served_requests"`
-		BlockedRequests int    `json:"blocked_requests"`
-		BandwidthBytes  int    `json:"bandwidth_bytes"`
-		CacheHits       int    `json:"cache_hits"`
-		CacheMisses     int    `json:"cache_misses"`
-		CacheBypass     int    `json:"cache_bypass"`
-		CacheValueBytes int    `json:"cache_value_bytes"`
-		LatestTimestamp string `json:"latest_timestamp"`
+		TotalRequests   clickhouseInt `json:"total_requests"`
+		ServedRequests  clickhouseInt `json:"served_requests"`
+		BlockedRequests clickhouseInt `json:"blocked_requests"`
+		BandwidthBytes  clickhouseInt `json:"bandwidth_bytes"`
+		CacheHits       clickhouseInt `json:"cache_hits"`
+		CacheMisses     clickhouseInt `json:"cache_misses"`
+		CacheBypass     clickhouseInt `json:"cache_bypass"`
+		CacheValueBytes clickhouseInt `json:"cache_value_bytes"`
+		LatestTimestamp string        `json:"latest_timestamp"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&row); err != nil {
 		return Summary{}, err
 	}
 
+	totalRequests := int(row.TotalRequests)
+	servedRequests := int(row.ServedRequests)
+	blockedRequests := int(row.BlockedRequests)
+	bandwidthBytes := int(row.BandwidthBytes)
+	cacheHits := int(row.CacheHits)
+	cacheMisses := int(row.CacheMisses)
+	cacheBypass := int(row.CacheBypass)
+	cacheValueBytes := int(row.CacheValueBytes)
+
 	hitRatio := 0.0
-	denominator := row.CacheHits + row.CacheMisses + row.CacheBypass
+	denominator := cacheHits + cacheMisses + cacheBypass
 	if denominator > 0 {
-		hitRatio = float64(row.CacheHits) / float64(denominator)
+		hitRatio = float64(cacheHits) / float64(denominator)
 	}
 	freshness := "live"
 	status := QueryStatusLive
-	if row.LatestTimestamp == "" || row.TotalRequests == 0 {
+	if row.LatestTimestamp == "" || totalRequests == 0 {
 		freshness = "updating"
 		status = QueryStatusUpdating
 	}
 
 	return Summary{
-		TotalRequests:   row.TotalRequests,
-		ServedRequests:  row.ServedRequests,
-		BlockedRequests: row.BlockedRequests,
-		BandwidthBytes:  row.BandwidthBytes,
-		CacheHits:       row.CacheHits,
-		CacheMisses:     row.CacheMisses,
-		CacheBypass:     row.CacheBypass,
+		TotalRequests:   totalRequests,
+		ServedRequests:  servedRequests,
+		BlockedRequests: blockedRequests,
+		BandwidthBytes:  bandwidthBytes,
+		CacheHits:       cacheHits,
+		CacheMisses:     cacheMisses,
+		CacheBypass:     cacheBypass,
 		HitRatio:        hitRatio,
-		CacheValueBytes: row.CacheValueBytes,
-		QuotaUsedBytes:  row.BandwidthBytes,
+		CacheValueBytes: cacheValueBytes,
+		QuotaUsedBytes:  bandwidthBytes,
 		QuotaLimitBytes: quotaLimitBytes,
-		QuotaReached:    row.BandwidthBytes >= quotaLimitBytes,
+		QuotaReached:    bandwidthBytes >= quotaLimitBytes,
 		Freshness:       freshness,
 		Status:          status,
 	}, nil
+}
+
+func (s *Service) applyAuth(req *http.Request) {
+	if s.username == "" {
+		return
+	}
+	req.SetBasicAuth(s.username, s.password)
+}
+
+func formatClickHouseTimestamp(value string) string {
+	if value == "" {
+		return value
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		return value
+	}
+	return parsed.UTC().Format("2006-01-02 15:04:05.000")
 }

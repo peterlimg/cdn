@@ -1,31 +1,36 @@
 import { NextResponse } from "next/server"
 import {
-  DEMO_RESET_TOKEN,
-  GO_API_URL,
-  INTERNAL_API_TOKEN,
-  RUST_EDGE_URL,
+  getDemoResetToken,
+  getGoApiUrl,
+  getInternalApiToken,
+  getRustEdgeUrl,
 } from "../../../lib/demo/service-endpoints"
 
 export async function POST(request: Request) {
-  if (!DEMO_RESET_TOKEN || !INTERNAL_API_TOKEN) {
+  const demoResetToken = getDemoResetToken()
+  const goApiUrl = getGoApiUrl()
+  const internalApiToken = getInternalApiToken()
+  const rustEdgeUrl = getRustEdgeUrl()
+
+  if (!demoResetToken || !internalApiToken) {
     return NextResponse.json({ error: "reset is not configured" }, { status: 503 })
   }
 
-  if (request.headers.get("x-reset-token") !== DEMO_RESET_TOKEN) {
+  if (request.headers.get("x-reset-token") !== demoResetToken) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 })
   }
 
-  const controlReset = await fetch(`${GO_API_URL}/reset`, {
+  const controlReset = await fetch(`${goApiUrl}/reset`, {
     method: "POST",
     headers: {
-      "X-Internal-Token": INTERNAL_API_TOKEN,
+      "X-Internal-Token": internalApiToken,
     },
     cache: "no-store",
   })
-  const edgeReset = await fetch(`${RUST_EDGE_URL}/reset`, {
+  const edgeReset = await fetch(`${rustEdgeUrl}/reset`, {
     method: "POST",
     headers: {
-      "X-Internal-Token": INTERNAL_API_TOKEN,
+      "X-Internal-Token": internalApiToken,
     },
     cache: "no-store",
   })

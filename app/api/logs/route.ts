@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import { GO_API_URL } from "../../../lib/demo/service-endpoints"
+import { getGoApiUrl } from "../../../lib/demo/service-endpoints"
 
 export async function GET(request: Request) {
-  const url = new URL(`${GO_API_URL}/logs`)
+  const url = new URL(`${getGoApiUrl()}/logs`)
   const { searchParams } = new URL(request.url)
 
   for (const [key, value] of searchParams.entries()) {

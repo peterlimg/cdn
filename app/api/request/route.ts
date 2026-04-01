@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
-import { RUST_EDGE_URL } from "../../../lib/demo/service-endpoints"
+import { getRustEdgeUrl } from "../../../lib/demo/service-endpoints"
 
 export async function POST(request: Request) {
+  const rustEdgeUrl = getRustEdgeUrl()
   const body = (await request.json()) as { domainId?: string; path?: string }
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID()
 
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "domainId is required" }, { status: 400 })
   }
 
-  const response = await fetch(`${RUST_EDGE_URL}/request`, {
+  const response = await fetch(`${rustEdgeUrl}/request`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

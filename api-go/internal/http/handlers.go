@@ -74,6 +74,10 @@ func (s *Server) Register(mux *http.ServeMux) {
 			writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "analytics": "degraded", "warning": "clickhouse unavailable, falling back to local events"})
 			return
 		}
+		if warning := s.store.AnalyticsWarning(); warning != "" {
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "analytics": "degraded", "warning": warning})
+			return
+		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("/dashboard", s.handleDashboard)

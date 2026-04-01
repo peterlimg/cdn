@@ -1,4 +1,4 @@
-import { GO_API_URL } from "./service-endpoints"
+import { getGoApiUrl } from "./service-endpoints"
 import type {
   DashboardSnapshot,
   DomainRecord,
@@ -15,7 +15,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 export async function fetchDashboardSnapshot(domainId?: string): Promise<DashboardSnapshot> {
-  const url = new URL(`${GO_API_URL}/dashboard`)
+  const url = new URL(`${getGoApiUrl()}/dashboard`)
   if (domainId) {
     url.searchParams.set("domainId", domainId)
   }
@@ -25,12 +25,12 @@ export async function fetchDashboardSnapshot(domainId?: string): Promise<Dashboa
 }
 
 export async function fetchDomains(): Promise<DomainRecord[]> {
-  const response = await fetch(`${GO_API_URL}/domains`, { cache: "no-store" })
+  const response = await fetch(`${getGoApiUrl()}/domains`, { cache: "no-store" })
   return parseJson<DomainRecord[]>(response)
 }
 
 export async function fetchDomain(domainId: string): Promise<DomainRecord | null> {
-  const response = await fetch(`${GO_API_URL}/domains/${domainId}`, { cache: "no-store" })
+  const response = await fetch(`${getGoApiUrl()}/domains/${domainId}`, { cache: "no-store" })
 
   if (response.status === 404) {
     return null
@@ -47,7 +47,7 @@ export async function createDomain(input: {
   healthCheckPath?: string
   setupPath?: "existing-origin" | "network-static" | "demo-static"
 }) {
-  const response = await fetch(`${GO_API_URL}/domains`, {
+  const response = await fetch(`${getGoApiUrl()}/domains`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -66,7 +66,7 @@ export async function updateDomainSetup(
     setupPath: "existing-origin" | "network-static" | "demo-static"
   },
 ) {
-  const response = await fetch(`${GO_API_URL}/domains/${domainId}`, {
+  const response = await fetch(`${getGoApiUrl()}/domains/${domainId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -77,7 +77,7 @@ export async function updateDomainSetup(
 }
 
 export async function verifyDomainDns(domainId: string) {
-  const response = await fetch(`${GO_API_URL}/domains/${domainId}`, {
+  const response = await fetch(`${getGoApiUrl()}/domains/${domainId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "verify-dns" }),
@@ -88,7 +88,7 @@ export async function verifyDomainDns(domainId: string) {
 }
 
 export async function fetchLogs(domainId: string, service: "edge" | "api", requestId?: string) {
-  const url = new URL(`${GO_API_URL}/logs`)
+  const url = new URL(`${getGoApiUrl()}/logs`)
   url.searchParams.set("domainId", domainId)
   url.searchParams.set("service", service)
   if (requestId) {
