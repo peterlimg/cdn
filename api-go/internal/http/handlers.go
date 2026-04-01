@@ -110,13 +110,18 @@ func (s *Server) handleDomains(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "hostname and mode are required"})
 			return
 		}
-		writeJSON(w, http.StatusOK, s.store.CreateDomain(state.CreateDomainInput{
+		domain, err := s.store.CreateDomain(state.CreateDomainInput{
 			Hostname:    body.Hostname,
 			Mode:        body.Mode,
 			ProjectName: body.ProjectName,
 			Origin:      body.Origin,
 			SetupPath:   body.SetupPath,
-		}))
+		})
+		if err != nil {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, domain)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -282,8 +287,23 @@ func (s *Server) handleEdgeContext(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	domainID := r.URL.Query().Get("domainId")
+	hostname := r.URL.Query().Get("hostname")
 	requestID := r.URL.Query().Get("requestId")
 	traceID := r.URL.Query().Get("traceId")
+
+	if domainID == "" && hostname != "" {
+		domain, ok, err := s.store.GetDomainByHostname(hostname)
+		if err != nil {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+			return
+		}
+		if !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found for hostname"})
+			return
+		}
+		domainID = domain.ID
+	}
+
 	context, ok := s.store.EdgeContext(domainID, requestID, traceID)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})

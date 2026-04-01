@@ -29,7 +29,7 @@ struct AppState {
 #[derive(Deserialize)]
 struct ProxyQuery {
     #[serde(rename = "domainId")]
-    domain_id: String,
+    domain_id: Option<String>,
 }
 
 #[tokio::main]
@@ -76,11 +76,16 @@ async fn handle_proxy_request(
         .get("x-request-id")
         .and_then(|value| value.to_str().ok())
         .map(|value| value.to_string());
+    let hostname = headers
+        .get(axum::http::header::HOST)
+        .and_then(|value| value.to_str().ok())
+        .and_then(normalize_hostname);
 
     match execute_request(
         &state.client,
         RequestBody {
             domain_id: query.domain_id,
+            hostname,
             path: Some(format!("/{path}")),
         },
         request_id,
@@ -95,6 +100,14 @@ async fn handle_proxy_request(
             with_edge_headers((StatusCode::BAD_GATEWAY, Json(json!({ "error": error }))).into_response(), None, None, None)
         }
     }
+}
+
+fn normalize_hostname(host: &str) -> Option<String> {
+    let hostname = host.split(':').next()?.trim();
+    if hostname.is_empty() || hostname.eq_ignore_ascii_case("localhost") {
+        return None;
+    }
+    Some(hostname.to_string())
 }
 
 fn proxy_result_response(result: request_flow::EvaluatedRequest) -> Response<Body> {

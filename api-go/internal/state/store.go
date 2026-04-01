@@ -339,16 +339,27 @@ func formatLogID(sequence int) string {
 	return fmt.Sprintf("log-%06d", sequence)
 }
 
-func (s *Store) CreateDomain(input CreateDomainInput) DomainRecord {
+func canonicalHostname(hostname string) string {
+	return strings.ToLower(strings.TrimSpace(hostname))
+}
+
+func (s *Store) CreateDomain(input CreateDomainInput) (DomainRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	hostname := canonicalHostname(input.Hostname)
+	for _, existing := range s.domains {
+		if canonicalHostname(existing.Hostname) == hostname {
+			return DomainRecord{}, fmt.Errorf("hostname already exists")
+		}
+	}
+	input.Hostname = hostname
 	domain := buildDomain(s.nextDomainID(), input)
 	s.domains[domain.ID] = domain
 	s.persistDomainLocked(domain)
 	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "domain-create", TraceID: domain.ID, DomainID: domain.ID, Revision: domain.ActiveRevision, Event: "domain.create", Outcome: "stored", Message: "Domain created in Go control service.", Timestamp: now()}); err != nil {
 		log.Printf("control-plane log persist failed: %v", err)
 	}
-	return domain
+	return domain, nil
 }
 
 func (s *Store) UpdateDomainSetup(domainID string, input UpdateDomainSetupInput) (DomainRecord, bool) {
@@ -447,6 +458,26 @@ func (s *Store) GetDomain(id string) (DomainRecord, bool) {
 	defer s.mu.Unlock()
 	domain, ok := s.domains[id]
 	return domain, ok
+}
+
+func (s *Store) GetDomainByHostname(hostname string) (DomainRecord, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var matched *DomainRecord
+	target := canonicalHostname(hostname)
+	for _, domain := range s.domains {
+		if canonicalHostname(domain.Hostname) == target {
+			if matched != nil {
+				return DomainRecord{}, false, fmt.Errorf("multiple domains found for hostname")
+			}
+			copy := domain
+			matched = &copy
+		}
+	}
+	if matched == nil {
+		return DomainRecord{}, false, nil
+	}
+	return *matched, true, nil
 }
 
 func (s *Store) RecordServiceLog(entry ServiceLog) {

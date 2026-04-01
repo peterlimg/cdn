@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Test Origin</title>
+  <link rel="stylesheet" href="/assets/demo.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="eyebrow">browser-test.northstarcdn.test</div>
+      <h1>Browser Test Origin</h1>
+      <p>Purple QA-focused site used for host-header browser verification and cache demos.</p>
+    </header>
+
+    <div class="banner">
+      <strong>QA sandbox</strong>
+      <span>This hostname is reserved for browser verification and cache demonstrations.</span>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Domain Identity</h2>
+        <p>Distinct purple styling makes this hostname visibly different from the ready and customer variants.</p>
+      </div>
+      <div class="card">
+        <h2>Expected Behavior</h2>
+        <p>Open DevTools, reload twice, and confirm `X-Cache-Status` moves from `MISS` to `HIT`.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Browse</h2>
+      <div class="status-row">
+        <span class="label"><a href="/about.html">/about.html</a></span>
+        <span class="value">QA details</span>
+      </div>
+      <div class="status-row">
+        <span class="label"><a href="/assets/data.json">/assets/data.json</a></span>
+        <span class="value">Origin metadata</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

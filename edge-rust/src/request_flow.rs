@@ -43,7 +43,9 @@ pub struct EdgeContext {
 #[derive(Clone, Deserialize, Serialize)]
 pub struct RequestBody {
     #[serde(rename = "domainId")]
-    pub domain_id: String,
+    pub domain_id: Option<String>,
+    #[serde(default)]
+    pub hostname: Option<String>,
     pub path: Option<String>,
 }
 
@@ -132,8 +134,27 @@ pub async fn execute_request(client: &Client, request: RequestBody, ingress_requ
     let runtime = config::load_runtime_config();
     let request_id = ingress_request_id.unwrap_or_else(|| format!("req-{}", &Uuid::new_v4().to_string()[..8]));
     let trace_id = format!("trace-{}", &Uuid::new_v4().to_string()[..8]);
+
+    if request.domain_id.is_none() && request.hostname.is_none() {
+        return Err(RequestError::NotFound("domainId or hostname is required".to_string()));
+    }
+
+    let mut edge_context_url = reqwest::Url::parse(&format!("{}/internal/edge-context", runtime.go_api_url))
+        .map_err(|error| RequestError::Upstream(error.to_string()))?;
+    {
+        let mut query = edge_context_url.query_pairs_mut();
+        query.append_pair("requestId", &request_id);
+        query.append_pair("traceId", &trace_id);
+        if let Some(domain_id) = request.domain_id.as_ref() {
+            query.append_pair("domainId", domain_id);
+        }
+        if let Some(hostname) = request.hostname.as_ref() {
+            query.append_pair("hostname", hostname);
+        }
+    }
+
     let context = client
-        .get(format!("{}/internal/edge-context?domainId={}&requestId={}&traceId={}", runtime.go_api_url, request.domain_id, request_id, trace_id))
+        .get(edge_context_url)
         .header("X-Internal-Token", runtime.internal_api_token.clone().unwrap_or_default())
         .send()
         .await

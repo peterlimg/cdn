@@ -55,9 +55,12 @@ func TestAnalyticsFallsBackToLocalSummaryAfterInsertFailure(t *testing.T) {
 		},
 	}
 	store := NewStore(nil, analytics)
-	domain := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.northstarcdn.test", Mode: string(DomainReady)})
+	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.northstarcdn.test", Mode: string(DomainReady)})
+	if err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
 
-	err := store.IngestEdgeEvent(EdgeIngestPayload{
+	err = store.IngestEdgeEvent(EdgeIngestPayload{
 		Proof: RequestProof{
 			RequestID:        "req-1",
 			TraceID:          "trace-1",
@@ -107,12 +110,15 @@ func TestAnalyticsFallsBackToLocalSummaryAfterInsertFailure(t *testing.T) {
 
 func TestUpdateDomainSetupRejectsUnsafeExistingOrigin(t *testing.T) {
 	store := NewStore(nil, nil)
-	domain := store.CreateDomain(CreateDomainInput{
+	domain, err := store.CreateDomain(CreateDomainInput{
 		Hostname:  "pending-demo.northstarcdn.test",
 		Mode:      string(DomainPending),
 		Origin:    "https://static.example.com",
 		SetupPath: "existing-origin",
 	})
+	if err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
 
 	updated, ok := store.UpdateDomainSetup(domain.ID, UpdateDomainSetupInput{
 		Origin:    "http://127.0.0.1:3000/origin",
@@ -162,12 +168,15 @@ func TestVerifyDomainDNSPromotesHealthyOrigin(t *testing.T) {
 	}
 	publicishOrigin := fmt.Sprintf("http://127.0.0.1.nip.io:%s", parsedURL.Port())
 
-	domain := store.CreateDomain(CreateDomainInput{
+	domain, err := store.CreateDomain(CreateDomainInput{
 		Hostname:  "pending-demo.northstarcdn.test",
 		Mode:      string(DomainPending),
 		Origin:    publicishOrigin,
 		SetupPath: "existing-origin",
 	})
+	if err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
 
 	updated, ok := store.UpdateDomainSetup(domain.ID, UpdateDomainSetupInput{
 		Origin:    publicishOrigin,
@@ -203,12 +212,15 @@ func TestVerifyDomainDNSPromotesHealthyOrigin(t *testing.T) {
 
 func TestUpdateDomainSetupFailsWhenOriginIsUnreachable(t *testing.T) {
 	store := NewStore(nil, nil)
-	domain := store.CreateDomain(CreateDomainInput{
+	domain, err := store.CreateDomain(CreateDomainInput{
 		Hostname:  "pending-demo.northstarcdn.test",
 		Mode:      string(DomainPending),
 		Origin:    "https://static.example.com",
 		SetupPath: "existing-origin",
 	})
+	if err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
 
 	updated, ok := store.UpdateDomainSetup(domain.ID, UpdateDomainSetupInput{
 		Origin:    "https://127.0.0.1.nip.io:9",
@@ -227,12 +239,15 @@ func TestUpdateDomainSetupFailsWhenOriginIsUnreachable(t *testing.T) {
 
 func TestRecheckOriginRevalidatesStoredOrigin(t *testing.T) {
 	store := NewStore(nil, nil)
-	domain := store.CreateDomain(CreateDomainInput{
+	domain, err := store.CreateDomain(CreateDomainInput{
 		Hostname:  "pending-demo.northstarcdn.test",
 		Mode:      string(DomainPending),
 		Origin:    "https://static.example.com",
 		SetupPath: "existing-origin",
 	})
+	if err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
 
 	rechecked, ok := store.RecheckOrigin(domain.ID)
 	if !ok {
@@ -246,5 +261,38 @@ func TestRecheckOriginRevalidatesStoredOrigin(t *testing.T) {
 	}
 	if rechecked.LastOriginCheckAt == "" {
 		t.Fatal("expected last origin check timestamp after recheck")
+	}
+}
+
+func TestCreateDomainRejectsDuplicateHostname(t *testing.T) {
+	store := NewStore(nil, nil)
+	_, err := store.CreateDomain(CreateDomainInput{Hostname: "Test.NorthstarCDN.test", Mode: string(DomainReady)})
+	if err != nil {
+		t.Fatalf("first create should succeed: %v", err)
+	}
+
+	_, err = store.CreateDomain(CreateDomainInput{Hostname: "test.northstarcdn.test", Mode: string(DomainReady)})
+	if err == nil {
+		t.Fatal("expected duplicate hostname to be rejected")
+	}
+	if err.Error() != "hostname already exists" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestGetDomainByHostnameReturnsErrorForAmbiguousMatches(t *testing.T) {
+	store := NewStore(nil, nil)
+	store.domains["zone-1"] = DomainRecord{ID: "zone-1", Hostname: "dup.northstarcdn.test"}
+	store.domains["zone-2"] = DomainRecord{ID: "zone-2", Hostname: "DUP.northstarcdn.test"}
+
+	_, ok, err := store.GetDomainByHostname("dup.northstarcdn.test")
+	if err == nil {
+		t.Fatal("expected ambiguous hostname lookup to fail")
+	}
+	if ok {
+		t.Fatal("expected ambiguous hostname lookup to not return a domain")
+	}
+	if err.Error() != "multiple domains found for hostname" {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

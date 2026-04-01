@@ -1,0 +1,7 @@
+{
+  "site": "ready-demo",
+  "hostname": "ready-demo.northstarcdn.test",
+  "theme": "blue",
+  "origin_service": "ready-origin",
+  "purpose": "presentation-ready static origin"
+}
