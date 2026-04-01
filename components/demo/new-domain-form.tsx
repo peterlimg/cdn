@@ -9,34 +9,33 @@ const defaultHostnames = {
   pending: "pending-demo.northstarcdn.test",
 } as const
 
-const defaultProjectNames: Record<SetupPath, string> = {
-  "existing-origin": "My static site",
-  "network-static": "Network static site",
-  "demo-static": "Demo static site",
-}
-
 const defaultOrigins: Record<SetupPath, string> = {
   "existing-origin": "https://static.example.com",
   "network-static": "http://ready-origin:80",
   "demo-static": "http://127.0.0.1:3000/origin",
 }
 
+const defaultHealthCheckPaths: Record<SetupPath, string> = {
+	"existing-origin": "/",
+	"network-static": "/assets/demo.css",
+	"demo-static": "/assets/demo.css",
+}
+
 export function NewDomainForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialMode = searchParams.get("mode") === "pending" ? "pending" : "ready"
-  const initialSetupPath = (searchParams.get("setupPath") as SetupPath | null) ?? (searchParams.get("deploy") === "static" ? "network-static" : "existing-origin")
+  const initialSetupPath = (searchParams.get("setupPath") as SetupPath | null) ?? "existing-origin"
 
   const [mode, setMode] = useState<"ready" | "pending">(initialMode)
-  const [projectName, setProjectName] = useState(defaultProjectNames[initialSetupPath])
+  const [projectName, setProjectName] = useState("My static site")
   const [setupPath, setSetupPath] = useState<SetupPath>(initialSetupPath)
   const [hostname, setHostname] = useState<string>(defaultHostnames[initialMode])
   const [origin, setOrigin] = useState<string>(defaultOrigins[initialSetupPath])
+  const [healthCheckPath, setHealthCheckPath] = useState<string>(defaultHealthCheckPaths[initialSetupPath])
   const [hostnameDirty, setHostnameDirty] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const isNetworkStatic = setupPath === "network-static"
-
   async function createZone() {
     setError(null)
     const response = await fetch("/api/reseed", {
@@ -44,7 +43,7 @@ export function NewDomainForm() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ hostname, mode, projectName, origin, setupPath }),
+      body: JSON.stringify({ hostname, mode, projectName, origin, healthCheckPath, setupPath }),
     })
 
     const payload = await response.json().catch(() => ({ error: "failed to create zone" }))
@@ -62,11 +61,9 @@ export function NewDomainForm() {
       <div className="card stack">
         <div>
           <span className="eyebrow">Site setup</span>
-          <h2>{isNetworkStatic ? "Deploy a static site onto the network" : "Create your first CDN-backed site"}</h2>
+          <h2>Create your first CDN-backed site</h2>
           <p className="muted">
-            {isNetworkStatic
-              ? "Provision a network static site first, then attach that deployed origin to the CDN workflow so the site can be browsed through the edge."
-              : "Start with a hostname, choose how this site gets its origin, and continue into the setup workspace where DNS, activation, proof, logs, and analytics stay visible."}
+            Start with a hostname, choose how this site gets its origin, and continue into the setup workspace where DNS, activation, proof, logs, and analytics stay visible.
           </p>
         </div>
 
@@ -104,6 +101,7 @@ export function NewDomainForm() {
               const nextPath = (event.target.value as SetupPath)
               setSetupPath(nextPath)
               setOrigin(defaultOrigins[nextPath])
+              setHealthCheckPath(defaultHealthCheckPaths[nextPath])
             }}
             value={setupPath}
           >
@@ -112,17 +110,6 @@ export function NewDomainForm() {
             <option value="demo-static">Use a demo static origin</option>
           </select>
         </div>
-
-        {isNetworkStatic ? (
-          <div className="note stack" style={{ gap: 8 }}>
-            <div>
-              <strong>Separate deploy flow:</strong> this path creates a deployed static site first and uses that deployed origin as the CDN origin.
-            </div>
-            <div className="small muted">
-              Default deployed origin: <code>{origin}</code>. Change it if you want this CDN site to attach to a different network static deployment.
-            </div>
-          </div>
-        ) : null}
 
         <div className="field">
           <label htmlFor="origin">Origin URL</label>
@@ -133,6 +120,20 @@ export function NewDomainForm() {
             placeholder="https://static.example.com"
             value={origin}
           />
+        </div>
+
+        <div className="field">
+          <label htmlFor="healthCheckPath">Health check path</label>
+          <input
+            className="input"
+            id="healthCheckPath"
+            onChange={(event) => setHealthCheckPath(event.target.value)}
+            placeholder="/"
+            value={healthCheckPath}
+          />
+          <div className="small muted">
+            The control plane probes this path on the origin before marking it healthy.
+          </div>
         </div>
 
         <div className="field">
@@ -158,12 +159,8 @@ export function NewDomainForm() {
         <div className="note">
           <strong>{mode === "ready" ? "Ready now" : "Verification pending"}:</strong>{" "}
           {mode === "ready"
-            ? isNetworkStatic
-              ? "This deployment path is ready to browse through the CDN immediately after the site record is created."
-              : "This setup path is allowed to move directly into publish and proof once the site opens in the detail workspace."
-            : isNetworkStatic
-              ? "The static site gets deployed first, but live request proof stays blocked until readiness changes to ready."
-              : "This setup path still shows the full control-plane workflow, but request proof stays blocked until readiness changes to ready."}
+            ? "This setup path is allowed to move directly into publish and proof once the site opens in the detail workspace."
+            : "This setup path still shows the full control-plane workflow, but request proof stays blocked until readiness changes to ready."}
         </div>
 
         {error ? <div className="alert">{error}</div> : null}

@@ -27,6 +27,7 @@ export function DomainConfigSections({
   domainId,
   projectName,
   origin,
+  healthCheckPath,
   setupPath,
   setupStage,
   originStatus,
@@ -41,6 +42,7 @@ export function DomainConfigSections({
   domainId: string
   projectName?: string
   origin: string
+  healthCheckPath?: string
   setupPath?: string
   setupStage?: string
   originStatus?: string
@@ -58,6 +60,7 @@ export function DomainConfigSections({
   const proxiedCheckUrl = `/api/proxy-check?domainId=${domainId}&path=${encodeURIComponent(liveRoute)}`
   const [projectNameValue, setProjectNameValue] = useState(projectName || "")
   const [originValue, setOriginValue] = useState(origin)
+  const [healthCheckPathValue, setHealthCheckPathValue] = useState(healthCheckPath || "/assets/demo.css")
   const [setupPathValue, setSetupPathValue] = useState(setupPath || "demo-static")
   const [error, setError] = useState<string | null>(null)
 
@@ -66,11 +69,12 @@ export function DomainConfigSections({
     const response = await fetch(`/api/domains/${domainId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectName: projectNameValue,
-        origin: originValue,
-        setupPath: setupPathValue,
-      }),
+        body: JSON.stringify({
+          projectName: projectNameValue,
+          origin: originValue,
+          healthCheckPath: healthCheckPathValue,
+          setupPath: setupPathValue,
+        }),
     })
 
     const payload = await response.json().catch(() => ({ error: "failed to update site setup" }))
@@ -136,6 +140,7 @@ export function DomainConfigSections({
             <span className="eyebrow">Origin</span>
             <h4 style={{ marginBottom: 4 }}>{origin}</h4>
             <div className="small muted">Path: {setupPath || "demo-static"}</div>
+            <div className="small muted">Health check: {healthCheckPath || "/assets/demo.css"}</div>
           </div>
           <div className="badge pending">{proxyMode ?? "proxied"}</div>
         </div>
@@ -198,6 +203,15 @@ export function DomainConfigSections({
             id={`origin-url-${domainId}`}
             onChange={(event) => setOriginValue(event.target.value)}
             value={originValue}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor={`health-check-path-${domainId}`}>Health check path</label>
+          <input
+            className="input"
+            id={`health-check-path-${domainId}`}
+            onChange={(event) => setHealthCheckPathValue(event.target.value)}
+            value={healthCheckPathValue}
           />
         </div>
         <div className="small muted">

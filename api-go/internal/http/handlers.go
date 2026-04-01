@@ -100,22 +100,24 @@ func (s *Server) handleDomains(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, s.store.ListDomains())
 	case http.MethodPost:
 		var body struct {
-			Hostname    string `json:"hostname"`
-			Mode        string `json:"mode"`
-			ProjectName string `json:"projectName"`
-			Origin      string `json:"origin"`
-			SetupPath   string `json:"setupPath"`
+			Hostname        string `json:"hostname"`
+			Mode            string `json:"mode"`
+			ProjectName     string `json:"projectName"`
+			Origin          string `json:"origin"`
+			HealthCheckPath string `json:"healthCheckPath"`
+			SetupPath       string `json:"setupPath"`
 		}
 		if err := decode(r, &body); err != nil || body.Hostname == "" || (body.Mode != "ready" && body.Mode != "pending") {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "hostname and mode are required"})
 			return
 		}
 		domain, err := s.store.CreateDomain(state.CreateDomainInput{
-			Hostname:    body.Hostname,
-			Mode:        body.Mode,
-			ProjectName: body.ProjectName,
-			Origin:      body.Origin,
-			SetupPath:   body.SetupPath,
+			Hostname:        body.Hostname,
+			Mode:            body.Mode,
+			ProjectName:     body.ProjectName,
+			Origin:          body.Origin,
+			HealthCheckPath: body.HealthCheckPath,
+			SetupPath:       body.SetupPath,
 		})
 		if err != nil {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
@@ -139,18 +141,20 @@ func (s *Server) handleDomainByID(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, domain)
 	case http.MethodPatch:
 		var body struct {
-			ProjectName string `json:"projectName"`
-			Origin      string `json:"origin"`
-			SetupPath   string `json:"setupPath"`
+			ProjectName     string `json:"projectName"`
+			Origin          string `json:"origin"`
+			HealthCheckPath string `json:"healthCheckPath"`
+			SetupPath       string `json:"setupPath"`
 		}
 		if err := decode(r, &body); err != nil || body.Origin == "" || body.SetupPath == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "origin and setupPath are required"})
 			return
 		}
 		domain, ok := s.store.UpdateDomainSetup(id, state.UpdateDomainSetupInput{
-			ProjectName: body.ProjectName,
-			Origin:      body.Origin,
-			SetupPath:   body.SetupPath,
+			ProjectName:     body.ProjectName,
+			Origin:          body.Origin,
+			HealthCheckPath: body.HealthCheckPath,
+			SetupPath:       body.SetupPath,
 		})
 		if !ok {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "domain not found"})

@@ -50,6 +50,7 @@ export type DomainRecord = {
   hostname: string
   projectName?: string
   origin: string
+  healthCheckPath?: string
   originValidationMessage?: string
   lastOriginCheckAt?: string
   lastOriginCheckOutcome?: OriginStatus

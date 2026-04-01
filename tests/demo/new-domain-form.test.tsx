@@ -7,7 +7,6 @@ const push = vi.fn()
 const refresh = vi.fn()
 let searchMode = "ready"
 let searchSetupPath: string | null = null
-let searchDeploy: string | null = null
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh }),
@@ -15,7 +14,6 @@ vi.mock("next/navigation", () => ({
     get: (key: string) => {
       if (key === "mode") return searchMode
       if (key === "setupPath") return searchSetupPath
-      if (key === "deploy") return searchDeploy
       return null
     },
   }),
@@ -27,7 +25,6 @@ describe("new domain form", () => {
     refresh.mockReset()
     searchMode = "ready"
     searchSetupPath = null
-    searchDeploy = null
   })
 
   it("preserves a typed hostname when readiness mode changes", () => {
@@ -56,6 +53,7 @@ describe("new domain form", () => {
     fireEvent.change(screen.getByLabelText("Origin path"), { target: { value: "network-static" } })
 
     expect(screen.getByDisplayValue("http://ready-origin:80")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("/assets/demo.css")).toBeInTheDocument()
   })
 
   it("renders project and origin fields for real site setup", () => {
@@ -63,16 +61,7 @@ describe("new domain form", () => {
 
     expect(screen.getByLabelText("Project name")).toBeInTheDocument()
     expect(screen.getByLabelText("Origin URL")).toBeInTheDocument()
+    expect(screen.getByLabelText("Health check path")).toBeInTheDocument()
     expect(screen.getByText("Create site and continue setup")).toBeInTheDocument()
-  })
-
-  it("shows the separate static deployment copy when deploy mode is selected", () => {
-    searchDeploy = "static"
-
-    render(<NewDomainForm />)
-
-    expect(screen.getByText("Deploy a static site onto the network")).toBeInTheDocument()
-    expect(screen.getByDisplayValue("http://ready-origin:80")).toBeInTheDocument()
-    expect(screen.getByText(/Separate deploy flow:/)).toBeInTheDocument()
   })
 })

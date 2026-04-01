@@ -44,6 +44,7 @@ export async function createDomain(input: {
   mode: "ready" | "pending"
   projectName?: string
   origin?: string
+  healthCheckPath?: string
   setupPath?: "existing-origin" | "network-static" | "demo-static"
 }) {
   const response = await fetch(`${GO_API_URL}/domains`, {
@@ -61,6 +62,7 @@ export async function updateDomainSetup(
   input: {
     projectName?: string
     origin: string
+    healthCheckPath?: string
     setupPath: "existing-origin" | "network-static" | "demo-static"
   },
 ) {

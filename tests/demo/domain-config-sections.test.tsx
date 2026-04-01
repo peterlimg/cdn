@@ -10,12 +10,13 @@ vi.mock("next/navigation", () => ({
 describe("domain config sections", () => {
   it("shows the real proxied asset check url for the current domain", () => {
     render(
-        <DomainConfigSections
-          domainId="zone-123"
-          projectName="Marketing site"
-          origin="http://ui:3000/origin"
-          setupPath="network-static"
-          setupStage="origin-configured"
+      <DomainConfigSections
+        domainId="zone-123"
+        projectName="Marketing site"
+        origin="http://ui:3000/origin"
+        healthCheckPath="/healthz"
+        setupPath="network-static"
+        setupStage="origin-configured"
         originStatus="healthy"
         originValidationMessage="Origin format looks valid for CDN routing."
         lastOriginCheckAt="2026-03-31T23:22:00Z"
@@ -34,6 +35,8 @@ describe("domain config sections", () => {
     expect(screen.getByText(/Last origin check: healthy at 2026-03-31T23:22:00Z/)).toBeInTheDocument()
     expect(screen.getByText("Origin format looks valid for CDN routing.")).toBeInTheDocument()
     expect(screen.getByDisplayValue("Marketing site")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("/healthz")).toBeInTheDocument()
+    expect(screen.getByText("Health check: /healthz")).toBeInTheDocument()
     expect(screen.getByText("Re-run origin check")).toBeInTheDocument()
     expect(screen.getByText("DNS verified")).toBeInTheDocument()
   })

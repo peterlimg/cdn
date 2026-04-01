@@ -28,6 +28,7 @@ type DomainRecord struct {
 	Hostname                string           `json:"hostname"`
 	ProjectName             string           `json:"projectName,omitempty"`
 	Origin                  string           `json:"origin"`
+	HealthCheckPath         string           `json:"healthCheckPath,omitempty"`
 	OriginValidationMessage string           `json:"originValidationMessage,omitempty"`
 	LastOriginCheckAt       string           `json:"lastOriginCheckAt,omitempty"`
 	LastOriginCheckOutcome  string           `json:"lastOriginCheckOutcome,omitempty"`

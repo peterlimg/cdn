@@ -6,6 +6,7 @@ type ReseedBody = {
   mode?: "ready" | "pending"
   projectName?: string
   origin?: string
+  healthCheckPath?: string
   setupPath?: "existing-origin" | "network-static" | "demo-static"
 }
 
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
       mode,
       projectName: body.projectName,
       origin: body.origin,
+      healthCheckPath: body.healthCheckPath,
       setupPath: body.setupPath,
     }),
     cache: "no-store",

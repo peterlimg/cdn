@@ -155,7 +155,7 @@ func TestUpdateDomainSetupRejectsUnsafeExistingOrigin(t *testing.T) {
 func TestVerifyDomainDNSPromotesHealthyOrigin(t *testing.T) {
 	store := NewStore(nil, nil)
 	originServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/assets/demo.css" {
+		if r.URL.Path != "/healthz" {
 			http.NotFound(w, r)
 			return
 		}
@@ -169,18 +169,20 @@ func TestVerifyDomainDNSPromotesHealthyOrigin(t *testing.T) {
 	publicishOrigin := fmt.Sprintf("http://127.0.0.1.nip.io:%s", parsedURL.Port())
 
 	domain, err := store.CreateDomain(CreateDomainInput{
-		Hostname:  "pending-demo.northstarcdn.test",
-		Mode:      string(DomainPending),
-		Origin:    publicishOrigin,
-		SetupPath: "existing-origin",
+		Hostname:        "pending-demo.northstarcdn.test",
+		Mode:            string(DomainPending),
+		Origin:          publicishOrigin,
+		HealthCheckPath: "/healthz",
+		SetupPath:       "existing-origin",
 	})
 	if err != nil {
 		t.Fatalf("create domain: %v", err)
 	}
 
 	updated, ok := store.UpdateDomainSetup(domain.ID, UpdateDomainSetupInput{
-		Origin:    publicishOrigin,
-		SetupPath: "existing-origin",
+		Origin:          publicishOrigin,
+		HealthCheckPath: "/healthz",
+		SetupPath:       "existing-origin",
 	})
 	if !ok {
 		t.Fatal("expected domain to exist")
@@ -193,6 +195,9 @@ func TestVerifyDomainDNSPromotesHealthyOrigin(t *testing.T) {
 	}
 	if updated.LastOriginCheckOutcome != "healthy" {
 		t.Fatalf("expected healthy last origin check outcome, got %q", updated.LastOriginCheckOutcome)
+	}
+	if updated.HealthCheckPath != "/healthz" {
+		t.Fatalf("expected health check path to persist, got %q", updated.HealthCheckPath)
 	}
 
 	verified, ok := store.VerifyDomainDNS(domain.ID)

@@ -143,12 +143,28 @@ func validateOrigin(origin string, setupPath string) (string, string) {
 	return "healthy", "Origin format looks valid for CDN routing."
 }
 
-func probeOrigin(origin string) (string, string) {
-	client := &http.Client{Timeout: 2 * time.Second}
-	probeURL := strings.TrimRight(origin, "/")
-	if !strings.HasSuffix(probeURL, "/assets/demo.css") {
-		probeURL += "/assets/demo.css"
+func defaultHealthCheckPath(setupPath string) string {
+	if setupPath == "existing-origin" {
+		return "/"
 	}
+	return "/assets/demo.css"
+}
+
+func normalizeHealthCheckPath(path string, setupPath string) string {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return defaultHealthCheckPath(setupPath)
+	}
+	if !strings.HasPrefix(trimmed, "/") {
+		return "/" + trimmed
+	}
+	return trimmed
+}
+
+func probeOrigin(origin string, healthCheckPath string) (string, string) {
+	client := &http.Client{Timeout: 2 * time.Second}
+	probePath := normalizeHealthCheckPath(healthCheckPath, "existing-origin")
+	probeURL := strings.TrimRight(origin, "/") + probePath
 	request, err := http.NewRequest(http.MethodGet, probeURL, nil)
 	if err != nil {
 		return "failed", "Origin health check could not be prepared."
@@ -165,13 +181,13 @@ func probeOrigin(origin string) (string, string) {
 		return "failed", fmt.Sprintf("Origin health check returned HTTP %d.", response.StatusCode)
 	}
 
-	return "healthy", fmt.Sprintf("Origin responded successfully on /assets/demo.css with HTTP %d.", response.StatusCode)
+	return "healthy", fmt.Sprintf("Origin responded successfully on %s with HTTP %d.", probePath, response.StatusCode)
 }
 
 func applySetupState(domain DomainRecord, validationMode string, shouldProbe bool, recordCheck bool) DomainRecord {
 	originStatus, originMessage := validateOrigin(domain.Origin, domain.SetupPath)
 	if originStatus == "healthy" && shouldProbe {
-		originStatus, originMessage = probeOrigin(domain.Origin)
+		originStatus, originMessage = probeOrigin(domain.Origin, domain.HealthCheckPath)
 	}
 	domain.OriginStatus = originStatus
 	domain.OriginValidationMessage = originMessage
@@ -206,17 +222,19 @@ func applySetupState(domain DomainRecord, validationMode string, shouldProbe boo
 }
 
 type CreateDomainInput struct {
-	Hostname    string
-	Mode        string
-	ProjectName string
-	Origin      string
-	SetupPath   string
+	Hostname        string
+	Mode            string
+	ProjectName     string
+	Origin          string
+	HealthCheckPath string
+	SetupPath       string
 }
 
 type UpdateDomainSetupInput struct {
-	ProjectName string
-	Origin      string
-	SetupPath   string
+	ProjectName     string
+	Origin          string
+	HealthCheckPath string
+	SetupPath       string
 }
 
 func buildDomain(id string, input CreateDomainInput) DomainRecord {
@@ -229,6 +247,7 @@ func buildDomain(id string, input CreateDomainInput) DomainRecord {
 	if setupPath == "" {
 		setupPath = "demo-static"
 	}
+	healthCheckPath := normalizeHealthCheckPath(input.HealthCheckPath, setupPath)
 	dnsStatus := "pending"
 	if input.Mode == string(DomainReady) {
 		dnsStatus = "verified"
@@ -238,6 +257,7 @@ func buildDomain(id string, input CreateDomainInput) DomainRecord {
 		Hostname:        input.Hostname,
 		ProjectName:     input.ProjectName,
 		Origin:          origin,
+		HealthCheckPath: healthCheckPath,
 		SetupPath:       setupPath,
 		DNSStatus:       dnsStatus,
 		ActiveRevision:  baseline.ID,
@@ -376,8 +396,14 @@ func (s *Store) UpdateDomainSetup(domainID string, input UpdateDomainSetupInput)
 	if input.Origin != "" {
 		domain.Origin = input.Origin
 	}
+	if input.HealthCheckPath != "" {
+		domain.HealthCheckPath = normalizeHealthCheckPath(input.HealthCheckPath, domain.SetupPath)
+	}
 	if input.SetupPath != "" {
 		domain.SetupPath = input.SetupPath
+		if input.HealthCheckPath == "" {
+			domain.HealthCheckPath = normalizeHealthCheckPath(domain.HealthCheckPath, domain.SetupPath)
+		}
 	}
 
 	validationMode := string(domain.Status)

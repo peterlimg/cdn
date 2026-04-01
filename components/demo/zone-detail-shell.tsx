@@ -61,6 +61,7 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
           domainId={domain.id}
           projectName={domain.projectName}
           origin={domain.origin}
+          healthCheckPath={domain.healthCheckPath}
           setupPath={domain.setupPath}
           setupStage={domain.setupStage}
           originStatus={domain.originStatus}
