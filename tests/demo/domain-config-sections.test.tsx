@@ -24,20 +24,19 @@ describe("domain config sections", () => {
         dnsStatus="verified"
         dnsRecords={[]}
         proxyMode="proxied"
-        routeHint="/assets/demo.css"
+		routeHint="/healthz"
       />,
     )
 
-    expect(screen.getByText(/Real edge check:/)).toBeInTheDocument()
-    expect(screen.getByText("/api/proxy-check?domainId=zone-123&path=%2Fassets%2Fdemo.css")).toBeInTheDocument()
-    expect(screen.getByText(/X-Cache-Status/)).toBeInTheDocument()
+    expect(screen.getByText("Connect your origin")).toBeInTheDocument()
     expect(screen.getByText(/Origin status: healthy/)).toBeInTheDocument()
     expect(screen.getByText(/Last origin check: healthy at 2026-03-31T23:22:00Z/)).toBeInTheDocument()
     expect(screen.getByText("Origin format looks valid for CDN routing.")).toBeInTheDocument()
     expect(screen.getByDisplayValue("Marketing site")).toBeInTheDocument()
     expect(screen.getByDisplayValue("/healthz")).toBeInTheDocument()
     expect(screen.getByText("Health check: /healthz")).toBeInTheDocument()
-    expect(screen.getByText("Re-run origin check")).toBeInTheDocument()
+    expect(screen.getByText("Save origin")).toBeInTheDocument()
+    expect(screen.getByText("Check origin")).toBeInTheDocument()
     expect(screen.getByText("DNS verified")).toBeInTheDocument()
   })
 })

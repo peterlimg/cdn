@@ -27,41 +27,34 @@ describe("new domain form", () => {
     searchSetupPath = null
   })
 
-  it("preserves a typed hostname when readiness mode changes", () => {
+  it("renders a simplified pull-zone style form", () => {
     render(<NewDomainForm />)
 
-    const hostname = screen.getByLabelText("Hostname")
-    const mode = screen.getByLabelText("Initial verification state")
-
-    fireEvent.change(hostname, { target: { value: "custom-demo.example.test" } })
-    fireEvent.change(mode, { target: { value: "pending" } })
-
-    expect(screen.getByDisplayValue("custom-demo.example.test")).toBeInTheDocument()
-  })
-
-  it("uses the default hostname when the form has not been customized", () => {
-    render(<NewDomainForm />)
-
-    fireEvent.change(screen.getByLabelText("Initial verification state"), { target: { value: "pending" } })
-
-    expect(screen.getByDisplayValue("pending-demo.northstarcdn.test")).toBeInTheDocument()
-  })
-
-  it("switches the origin placeholder value when the setup path changes", () => {
-    render(<NewDomainForm />)
-
-    fireEvent.change(screen.getByLabelText("Origin path"), { target: { value: "network-static" } })
-
-    expect(screen.getByDisplayValue("http://ready-origin:80")).toBeInTheDocument()
-    expect(screen.getByDisplayValue("/assets/demo.css")).toBeInTheDocument()
-  })
-
-  it("renders project and origin fields for real site setup", () => {
-    render(<NewDomainForm />)
-
-    expect(screen.getByLabelText("Project name")).toBeInTheDocument()
+    expect(screen.getByText("Connect a site to the CDN")).toBeInTheDocument()
+    expect(screen.getByLabelText("Zone name")).toBeInTheDocument()
+    expect(screen.getByLabelText("Hostname")).toBeInTheDocument()
     expect(screen.getByLabelText("Origin URL")).toBeInTheDocument()
     expect(screen.getByLabelText("Health check path")).toBeInTheDocument()
-    expect(screen.getByText("Create site and continue setup")).toBeInTheDocument()
+    expect(screen.getByText("Create pull zone")).toBeInTheDocument()
+    expect(screen.queryByLabelText("Initial verification state")).not.toBeInTheDocument()
+  })
+
+  it("uses the ready hostname by default", () => {
+    render(<NewDomainForm />)
+
+    expect(screen.getByDisplayValue("ready-demo.northstarcdn.test")).toBeInTheDocument()
+  })
+
+	it("keeps the public-origin defaults in the simplified form", () => {
+		render(<NewDomainForm />)
+
+		expect(screen.getByDisplayValue("https://static.example.com")).toBeInTheDocument()
+		expect(screen.getByDisplayValue("/")).toBeInTheDocument()
+	})
+
+  it("keeps the existing-origin health check default focused on public sites", () => {
+    render(<NewDomainForm />)
+
+    expect(screen.getByDisplayValue("/")).toBeInTheDocument()
   })
 })

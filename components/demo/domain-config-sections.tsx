@@ -54,14 +54,12 @@ export function DomainConfigSections({
   proxyMode?: string
   routeHint?: string
 }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const liveRoute = routeHint ?? "/assets/demo.css"
-  const proxiedCheckUrl = `/api/proxy-check?domainId=${domainId}&path=${encodeURIComponent(liveRoute)}`
-  const [projectNameValue, setProjectNameValue] = useState(projectName || "")
-  const [originValue, setOriginValue] = useState(origin)
-  const [healthCheckPathValue, setHealthCheckPathValue] = useState(healthCheckPath || "/assets/demo.css")
-  const [setupPathValue, setSetupPathValue] = useState(setupPath || "demo-static")
+	const router = useRouter()
+	const [isPending, startTransition] = useTransition()
+	const [projectNameValue, setProjectNameValue] = useState(projectName || "")
+	const [originValue, setOriginValue] = useState(origin)
+	const [healthCheckPathValue, setHealthCheckPathValue] = useState(healthCheckPath || "/")
+	const [setupPathValue, setSetupPathValue] = useState(setupPath || "demo-static")
   const [error, setError] = useState<string | null>(null)
 
   async function saveOriginSetup() {
@@ -126,11 +124,10 @@ export function DomainConfigSections({
   return (
     <div className="card stack">
       <div>
-        <span className="eyebrow">Setup configuration</span>
-        <h3>Origin, DNS, and route configuration</h3>
+        <span className="eyebrow">Setup</span>
+        <h3>Connect your origin</h3>
         <p className="muted small">
-          This section shows what the site will route to, what DNS records are required, and how the
-          first proof request reaches the edge.
+          Start with the origin details below. Once the origin is healthy, verify DNS and then send a request through the edge.
         </p>
       </div>
 
@@ -139,12 +136,10 @@ export function DomainConfigSections({
           <div>
             <span className="eyebrow">Origin</span>
             <h4 style={{ marginBottom: 4 }}>{origin}</h4>
-            <div className="small muted">Path: {setupPath || "demo-static"}</div>
             <div className="small muted">Health check: {healthCheckPath || "/assets/demo.css"}</div>
           </div>
           <div className="badge pending">{proxyMode ?? "proxied"}</div>
         </div>
-        <div className="small muted">Request route hint: {liveRoute}</div>
         <div className="proof-grid small muted">
           <span>Origin status: {originStatus || "pending"}</span>
           <span>DNS status: {dnsStatus || "pending"}</span>
@@ -155,24 +150,14 @@ export function DomainConfigSections({
           </div>
         ) : null}
         {originValidationMessage ? <div className="small muted">{originValidationMessage}</div> : null}
-        <div className="note stack" style={{ gap: 8 }}>
-          <div className="small">
-            Real edge check: <code>{proxiedCheckUrl}</code>
-          </div>
-          <div className="small muted">
-            Use this proxied asset URL to confirm the route really passes through the edge. The response returns
-            <code> X-Request-Id</code>, <code> X-Trace-Id</code>, and <code> X-Cache-Status</code>
-            headers for correlation back to proof and logs.
-          </div>
-        </div>
       </div>
 
       <div className="list-item stack">
         <div>
-          <span className="eyebrow">Update setup</span>
-          <h4>Connect origin and advance verification</h4>
+		  <span className="eyebrow">Edit</span>
+		  <h4>Save origin settings</h4>
         </div>
-        <div className="proof-grid">
+        <div className="field">
           <div className="field">
             <label htmlFor={`project-name-${domainId}`}>Project name</label>
             <input
@@ -181,19 +166,6 @@ export function DomainConfigSections({
               onChange={(event) => setProjectNameValue(event.target.value)}
               value={projectNameValue}
             />
-          </div>
-          <div className="field">
-            <label htmlFor={`setup-path-${domainId}`}>Origin path</label>
-            <select
-              className="select"
-              id={`setup-path-${domainId}`}
-              onChange={(event) => setSetupPathValue(event.target.value)}
-            value={setupPathValue}
-          >
-            <option value="existing-origin">Connect an existing static origin</option>
-            <option value="network-static">Deploy a static site on the network</option>
-            <option value="demo-static">Use a demo static origin</option>
-          </select>
           </div>
         </div>
         <div className="field">
@@ -215,8 +187,7 @@ export function DomainConfigSections({
           />
         </div>
         <div className="small muted">
-          Current setup stage: {setupStage || "created"}. Save origin details first, then verify DNS when the
-          required records are in place.
+		  Next step: save the origin details, re-run the check if needed, then verify DNS when the origin is healthy.
         </div>
         {originStatus === "failed" && originValidationMessage ? <div className="alert">{originValidationMessage}</div> : null}
         {error ? <div className="alert">{error}</div> : null}
@@ -229,7 +200,7 @@ export function DomainConfigSections({
             })}
             type="button"
           >
-            {isPending ? "Saving setup..." : "Save origin setup"}
+			{isPending ? "Saving..." : "Save origin"}
           </button>
           <button
             className="button-secondary"
@@ -239,7 +210,7 @@ export function DomainConfigSections({
             })}
             type="button"
           >
-            {isPending ? "Checking origin..." : "Re-run origin check"}
+			{isPending ? "Checking..." : "Check origin"}
           </button>
           <button
             className="button-secondary"
@@ -249,7 +220,7 @@ export function DomainConfigSections({
             })}
             type="button"
           >
-            {dnsStatus === "verified" ? "DNS verified" : "Verify DNS and activate"}
+			{dnsStatus === "verified" ? "DNS verified" : "Verify DNS"}
           </button>
         </div>
       </div>

@@ -7,7 +7,6 @@ import { AnalyticsPageShell } from "./analytics-page-shell"
 import { CachePolicyCard } from "./cache-policy-card"
 import { DomainConfigSections } from "./domain-config-sections"
 import { DomainOnboardingCard } from "./domain-onboarding-card"
-import { DomainStateTimeline } from "./domain-state-timeline"
 import { EvidenceTabs } from "./evidence-tabs"
 import { PolicyRevisionBanner } from "./policy-revision-banner"
 import type { AnalyticsSummary, DomainRecord, RequestProof, ServiceLog } from "../../services/shared/src/types"
@@ -41,51 +40,49 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
 
   return (
     <div className="grid stack">
-      <PolicyRevisionBanner
-        activeRevisionId={domain.activeRevisionId}
-        appliedRevisionId={domain.appliedRevisionId}
+      <DomainOnboardingCard domain={domain} />
+
+      <DomainConfigSections
+        domainId={domain.id}
+        projectName={domain.projectName}
+        origin={domain.origin}
+        healthCheckPath={domain.healthCheckPath}
+        setupPath={domain.setupPath}
+        setupStage={domain.setupStage}
+        originStatus={domain.originStatus}
+        originValidationMessage={domain.originValidationMessage}
+        lastOriginCheckAt={domain.lastOriginCheckAt}
+        lastOriginCheckOutcome={domain.lastOriginCheckOutcome}
+        dnsStatus={domain.dnsStatus}
+        dnsRecords={domain.dnsRecords ?? []}
+        proxyMode={domain.proxyMode}
+        routeHint={domain.routeHint}
+      />
+
+      <EvidenceTabs
+        domainId={domain.id}
+        domainStatus={domain.status}
+        routeHint={domain.routeHint || domain.healthCheckPath}
+        initialProofs={events}
+        initialEdgeLogs={edgeLogs}
+        initialApiLogs={apiLogs}
+        onRequestComplete={refreshAnalytics}
       />
 
       <div className="grid two-col">
-        <DomainOnboardingCard domain={domain} />
         <CachePolicyCard
           domainId={domain.id}
           cacheEnabled={Boolean(activeRevision?.cacheEnabled)}
           revisionLabel={activeRevision?.label ?? "Unknown revision"}
           onChanged={refreshAfterPolicyChange}
         />
-      </div>
-
-      <div className="grid two-col">
-        <DomainConfigSections
-          domainId={domain.id}
-          projectName={domain.projectName}
-          origin={domain.origin}
-          healthCheckPath={domain.healthCheckPath}
-          setupPath={domain.setupPath}
-          setupStage={domain.setupStage}
-          originStatus={domain.originStatus}
-          originValidationMessage={domain.originValidationMessage}
-          lastOriginCheckAt={domain.lastOriginCheckAt}
-          lastOriginCheckOutcome={domain.lastOriginCheckOutcome}
-          dnsStatus={domain.dnsStatus}
-          dnsRecords={domain.dnsRecords ?? []}
-          proxyMode={domain.proxyMode}
-          routeHint={domain.routeHint}
-        />
-        <DomainStateTimeline status={domain.status} />
-      </div>
-
-      <div className="grid two-col">
-        <EvidenceTabs
-          domainId={domain.id}
-          domainStatus={domain.status}
-          initialProofs={events}
-          initialEdgeLogs={edgeLogs}
-          initialApiLogs={apiLogs}
-          onRequestComplete={refreshAnalytics}
-        />
-        <AnalyticsPageShell summary={liveSummary} />
+        <div className="grid stack">
+          <PolicyRevisionBanner
+            activeRevisionId={domain.activeRevisionId}
+            appliedRevisionId={domain.appliedRevisionId}
+          />
+          <AnalyticsPageShell summary={liveSummary} />
+        </div>
       </div>
     </div>
   )

@@ -9,6 +9,7 @@ import type { RequestProof, ServiceLog } from "../../services/shared/src/types"
 type Props = {
   domainId: string
   domainStatus: "ready" | "pending"
+  routeHint?: string
   initialProofs: RequestProof[]
   initialEdgeLogs: ServiceLog[]
   initialApiLogs: ServiceLog[]
@@ -18,6 +19,7 @@ type Props = {
 export function EvidenceTabs({
   domainId,
   domainStatus,
+  routeHint,
   initialProofs,
   initialEdgeLogs,
   initialApiLogs,
@@ -52,7 +54,7 @@ export function EvidenceTabs({
     const response = await fetch("/api/request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ domainId }),
+      body: JSON.stringify({ domainId, path: routeHint || "/" }),
     })
     const payload = (await response.json()) as RequestProof | { error?: string }
     if (!response.ok) {

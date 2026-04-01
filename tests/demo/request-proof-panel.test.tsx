@@ -8,8 +8,8 @@ describe("request proof panel", () => {
     render(<RequestProofPanel domainStatus="pending" proofs={[]} isPending={false} onSendRequest={() => {}} />)
 
     expect(screen.getByText("Blocked proof")).toBeInTheDocument()
-    expect(screen.getByText("Show blocked request proof")).toBeInTheDocument()
-    expect(screen.getByText(/No blocked proof yet/)).toBeInTheDocument()
+    expect(screen.getByText("Show blocked request")).toBeInTheDocument()
+    expect(screen.getByText(/This zone is not ready yet/)).toBeInTheDocument()
   })
 
   it("syncs displayed proofs when the parent rerenders with newer proof data", () => {

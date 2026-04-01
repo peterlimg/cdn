@@ -21,7 +21,7 @@ export function RequestProofPanel({
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <span className="eyebrow">{domainStatus === "ready" ? "Live proof" : "Blocked proof"}</span>
-          <h3>{domainStatus === "ready" ? "Request path evidence" : "Readiness-bound request evidence"}</h3>
+		  <h3>{domainStatus === "ready" ? "Test traffic through the edge" : "Traffic is blocked until setup is complete"}</h3>
         </div>
         <button
           className="button"
@@ -29,14 +29,12 @@ export function RequestProofPanel({
           onClick={onSendRequest}
           type="button"
         >
-          {isPending ? "Sending request..." : domainStatus === "ready" ? "Send request through edge" : "Show blocked request proof"}
+		  {isPending ? "Sending request..." : domainStatus === "ready" ? "Send test request" : "Show blocked request"}
         </button>
       </div>
 
       <p className="muted small">
-        This panel is the buyer-readable summary of one request. Use the tabs beside it to drill into
-        Rust edge logs and Go API logs for the same request ID and trace ID. If analytics later show
-        `Updating` or `Degraded`, this panel is still the immediate truth for the request path.
+		Use this panel to confirm whether the edge can reach your origin and what happened to the request.
       </p>
 
       {error ? <div className="note">{error}</div> : null}
@@ -45,8 +43,8 @@ export function RequestProofPanel({
         {proofs.length === 0 ? (
           <div className="note">
             {domainStatus === "ready"
-              ? "No edge requests yet. Publish a policy, then send traffic to produce proof."
-              : "No blocked proof yet. Send one request to show how pending zones stay blocked by design."}
+			  ? "No test requests yet. Send one request to confirm the CDN can reach this zone."
+			  : "This zone is not ready yet. Finish setup, then come back and test traffic."}
           </div>
         ) : (
           proofs.map((proof) => (

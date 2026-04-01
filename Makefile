@@ -1,6 +1,6 @@
 .PHONY: help
 .PHONY: up up-dev build up-full down ps logs logs-api logs-edge logs-ui logs-nginx
-.PHONY: health health-all reset reseed reseed-pending reseed-ready
+.PHONY: health health-all reset reset-data reseed reseed-pending reseed-ready
 .PHONY: test test-go test-rust test-app build-go build-rust
 
 help: ## Show this help
@@ -65,10 +65,16 @@ health-all: ## Check health of all services
 
 # --- Reset / Reseed ---
 
-reset: ## Reset demo state (clears PG, ClickHouse, Redis, Rust cache)
-	@curl -sf -X POST $(API_BASE)/api/reset \
-		-H "x-reset-token: $(DEMO_RESET_TOKEN)" \
-		| python3 -m json.tool 2>/dev/null || echo "reset failed (check token + health)"
+reset: reset-data ## Alias for reset-data
+
+reset-data: ## Reset persisted demo data and cache directly
+	@$(COMPOSE) stop ui api >/dev/null
+	@$(COMPOSE) exec -T postgres psql -U postgres -d cdn_demo -c "TRUNCATE TABLE service_logs, request_events, control_domains RESTART IDENTITY;"
+	@$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE cdn_demo.request_events"
+	@$(COMPOSE) exec -T redis redis-cli FLUSHALL
+	@$(COMPOSE) exec -T edge wget -qO- --header='X-Internal-Token: $(INTERNAL_API_TOKEN)' --post-data='' http://127.0.0.1:4002/reset >/dev/null
+	@$(COMPOSE) start api ui >/dev/null
+	@echo "demo data reset"
 
 reseed: reseed-ready ## Alias for reseed (defaults to ready mode)
 

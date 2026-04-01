@@ -265,7 +265,7 @@ func buildDomain(id string, input CreateDomainInput) DomainRecord {
 		Revisions:       []PolicyRevision{baseline},
 		DNSRecords:      buildDNSRecords(input.Hostname),
 		ProxyMode:       "proxied",
-		RouteHint:       "/assets/demo.css",
+		RouteHint:       healthCheckPath,
 		RateLimit:       defaultRateLimit,
 	}
 	shouldProbe := input.Origin != ""
@@ -301,6 +301,10 @@ func (s *Store) loadPersistedState() {
 		if err := json.Unmarshal(payload, &domain); err != nil {
 			log.Printf("control-plane postgres domain decode failed: %v", err)
 			continue
+		}
+		domain.HealthCheckPath = normalizeHealthCheckPath(domain.HealthCheckPath, domain.SetupPath)
+		if domain.RouteHint == "" || (domain.SetupPath == "existing-origin" && domain.RouteHint == "/assets/demo.css") {
+			domain.RouteHint = domain.HealthCheckPath
 		}
 		if domain.RateLimit < minimumQuotaSafeRateLimit {
 			domain.RateLimit = defaultRateLimit
@@ -398,11 +402,13 @@ func (s *Store) UpdateDomainSetup(domainID string, input UpdateDomainSetupInput)
 	}
 	if input.HealthCheckPath != "" {
 		domain.HealthCheckPath = normalizeHealthCheckPath(input.HealthCheckPath, domain.SetupPath)
+		domain.RouteHint = domain.HealthCheckPath
 	}
 	if input.SetupPath != "" {
 		domain.SetupPath = input.SetupPath
 		if input.HealthCheckPath == "" {
 			domain.HealthCheckPath = normalizeHealthCheckPath(domain.HealthCheckPath, domain.SetupPath)
+			domain.RouteHint = domain.HealthCheckPath
 		}
 	}
 

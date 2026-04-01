@@ -3,10 +3,10 @@ import { DomainReadinessBadge } from "./domain-readiness-badge"
 import type { DomainRecord } from "../../services/shared/src/types"
 
 export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
-  const setupHeading = domain.status === "ready" ? "This site can move into activation and proof" : "This site still has setup work before live traffic"
-  const setupBody = domain.status === "ready"
-    ? "Origin, DNS shape, and initial activation state are configured well enough to publish a revision and drive live request proof."
-    : "The site record exists and setup sections are visible, but request proof remains blocked until readiness changes to ready."
+	const setupHeading = domain.status === "ready" ? "Zone is ready for traffic tests" : "Finish setup before traffic can flow"
+	const setupBody = domain.status === "ready"
+		? "Origin and verification checks have passed, so you can test requests through the edge now."
+		: "Review the origin settings below, fix any failed checks, then verify DNS before sending traffic through the edge."
 
   return (
     <div className="card stack">
@@ -21,19 +21,19 @@ export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
 
       <p className="muted">{domain.readinessNote}</p>
 
-      <div className="list-item stack">
-        <div>
-          <span className="eyebrow">Setup contract</span>
-          <h4>{setupHeading}</h4>
-        </div>
-        <div className="small muted">{setupBody}</div>
-      </div>
+		<div className="list-item stack">
+			<div>
+				<span className="eyebrow">Current status</span>
+				<h4>{setupHeading}</h4>
+			</div>
+			<div className="small muted">{setupBody}</div>
+		</div>
 
-      <div className="list-item stack">
-        <div>
-          <span className="eyebrow">Current setup</span>
-          <h4>{domain.setupPath === "existing-origin" ? "Existing origin connected" : domain.setupPath === "network-static" ? "Network static deployment path" : "Demo static origin path"}</h4>
-        </div>
+		<div className="list-item stack">
+			<div>
+				<span className="eyebrow">Zone summary</span>
+				<h4>{domain.setupPath === "existing-origin" ? "Existing origin connected" : domain.setupPath === "network-static" ? "Network static deployment path" : "Demo static origin path"}</h4>
+			</div>
         <div className="small muted">
           Origin status: {domain.originStatus || "pending"}. DNS status: {domain.dnsStatus || "pending"}. Setup stage: {domain.setupStage || "created"}.
         </div>

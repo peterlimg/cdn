@@ -199,6 +199,9 @@ func TestVerifyDomainDNSPromotesHealthyOrigin(t *testing.T) {
 	if updated.HealthCheckPath != "/healthz" {
 		t.Fatalf("expected health check path to persist, got %q", updated.HealthCheckPath)
 	}
+	if updated.RouteHint != "/healthz" {
+		t.Fatalf("expected route hint to persist alongside health check path, got %q", updated.RouteHint)
+	}
 
 	verified, ok := store.VerifyDomainDNS(domain.ID)
 	if !ok {
@@ -212,6 +215,9 @@ func TestVerifyDomainDNSPromotesHealthyOrigin(t *testing.T) {
 	}
 	if verified.SetupStage != "ready" {
 		t.Fatalf("expected ready setup stage, got %q", verified.SetupStage)
+	}
+	if verified.RouteHint != "/healthz" {
+		t.Fatalf("expected route hint to remain aligned after dns verification, got %q", verified.RouteHint)
 	}
 }
 
@@ -282,6 +288,23 @@ func TestCreateDomainRejectsDuplicateHostname(t *testing.T) {
 	}
 	if err.Error() != "hostname already exists" {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestExistingOriginLegacyRouteHintBackfillsToHealthCheckPath(t *testing.T) {
+	domain := DomainRecord{
+		SetupPath:       "existing-origin",
+		HealthCheckPath: "/",
+		RouteHint:       "/assets/demo.css",
+	}
+
+	domain.HealthCheckPath = normalizeHealthCheckPath(domain.HealthCheckPath, domain.SetupPath)
+	if domain.RouteHint == "" || (domain.SetupPath == "existing-origin" && domain.RouteHint == "/assets/demo.css") {
+		domain.RouteHint = domain.HealthCheckPath
+	}
+
+	if domain.RouteHint != "/" {
+		t.Fatalf("expected route hint to backfill to root path, got %q", domain.RouteHint)
 	}
 }
 

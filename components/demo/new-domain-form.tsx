@@ -60,15 +60,15 @@ export function NewDomainForm() {
     <div className="grid stack">
       <div className="card stack">
         <div>
-          <span className="eyebrow">Site setup</span>
-          <h2>Create your first CDN-backed site</h2>
+          <span className="eyebrow">Add pull zone</span>
+          <h2>Connect a site to the CDN</h2>
           <p className="muted">
-            Start with a hostname, choose how this site gets its origin, and continue into the setup workspace where DNS, activation, proof, logs, and analytics stay visible.
+            Enter the hostname customers will use and the origin URL the CDN should pull from. Advanced setup stays available after the zone is created.
           </p>
         </div>
 
         <div className="field">
-          <label htmlFor="projectName">Project name</label>
+          <label htmlFor="projectName">Zone name</label>
           <input
             className="input"
             id="projectName"
@@ -76,6 +76,7 @@ export function NewDomainForm() {
             placeholder="Marketing site"
             value={projectName}
           />
+          <div className="small muted">Internal label for this CDN zone.</div>
         </div>
 
         <div className="field">
@@ -90,25 +91,7 @@ export function NewDomainForm() {
             placeholder="ready-demo.northstarcdn.test"
             value={hostname}
           />
-        </div>
-
-        <div className="field">
-          <label htmlFor="setupPath">Origin path</label>
-          <select
-            className="select"
-            id="setupPath"
-            onChange={(event) => {
-              const nextPath = (event.target.value as SetupPath)
-              setSetupPath(nextPath)
-              setOrigin(defaultOrigins[nextPath])
-              setHealthCheckPath(defaultHealthCheckPaths[nextPath])
-            }}
-            value={setupPath}
-          >
-            <option value="existing-origin">Connect an existing static origin</option>
-            <option value="network-static">Deploy a static site on the network</option>
-            <option value="demo-static">Use a demo static origin</option>
-          </select>
+          <div className="small muted">The public hostname visitors will use for this site.</div>
         </div>
 
         <div className="field">
@@ -120,6 +103,7 @@ export function NewDomainForm() {
             placeholder="https://static.example.com"
             value={origin}
           />
+          <div className="small muted">The source server the CDN will contact on cache misses.</div>
         </div>
 
         <div className="field">
@@ -132,35 +116,8 @@ export function NewDomainForm() {
             value={healthCheckPath}
           />
           <div className="small muted">
-            The control plane probes this path on the origin before marking it healthy.
+            Optional. Defaults to <code>/</code> for public origins and can be changed later.
           </div>
-        </div>
-
-        <div className="field">
-          <label htmlFor="mode">Initial verification state</label>
-          <select
-            className="select"
-            id="mode"
-            onChange={(event) => {
-              const nextMode = event.target.value === "pending" ? "pending" : "ready"
-              setMode(nextMode)
-              if (!hostnameDirty || hostname === defaultHostnames.ready || hostname === defaultHostnames.pending) {
-                setHostname(defaultHostnames[nextMode])
-                setHostnameDirty(false)
-              }
-            }}
-            value={mode}
-          >
-            <option value="ready">Ready now: allow immediate live proof</option>
-            <option value="pending">Verification pending: setup visible, traffic blocked</option>
-          </select>
-        </div>
-
-        <div className="note">
-          <strong>{mode === "ready" ? "Ready now" : "Verification pending"}:</strong>{" "}
-          {mode === "ready"
-            ? "This setup path is allowed to move directly into publish and proof once the site opens in the detail workspace."
-            : "This setup path still shows the full control-plane workflow, but request proof stays blocked until readiness changes to ready."}
         </div>
 
         {error ? <div className="alert">{error}</div> : null}
@@ -174,10 +131,10 @@ export function NewDomainForm() {
             })}
             type="button"
           >
-            {isPending ? "Creating site..." : "Create site and continue setup"}
+            {isPending ? "Creating zone..." : "Create pull zone"}
           </button>
           <button className="button-secondary" onClick={() => router.push("/domains")} type="button">
-            Back to domains
+            Cancel
           </button>
         </div>
       </div>
