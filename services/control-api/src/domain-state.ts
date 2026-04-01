@@ -27,7 +27,7 @@ export function createDomain(input: { hostname: string; mode: "ready" | "pending
     status: input.mode,
     readinessNote:
       input.mode === "ready"
-        ? "Pre-verified demo domain ready for live traffic proof."
+        ? "Pre-verified domain ready for live traffic proof."
         : "Onboarding instructions shown only. Traffic is not live in this state.",
     truthLabel: input.mode === "ready" ? "live-proof" : "seeded-demo-data",
     activeRevisionId: baseline.id,

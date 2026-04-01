@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import type { SetupPath } from "../../services/shared/src/types"
 
 const defaultHostnames = {
-  ready: "ready-demo.northstarcdn.test",
-  pending: "pending-demo.northstarcdn.test",
+  ready: "ready-site.northstarcdn.test",
+  pending: "pending-site.northstarcdn.test",
 } as const
 
 const defaultOrigins: Record<SetupPath, string> = {
@@ -58,13 +58,17 @@ export function NewDomainForm() {
 
   return (
     <div className="grid stack">
-      <div className="card stack">
+      <section className="surface stack create-zone-shell">
         <div>
           <span className="eyebrow">Add pull zone</span>
-          <h2>Connect a site to the CDN</h2>
-          <p className="muted">
+          <h2 className="section-title">Create a new pull zone</h2>
+          <p className="section-copy muted">
             Enter the hostname customers will use and the origin URL the CDN should pull from. Advanced setup stays available after the zone is created.
           </p>
+        </div>
+
+        <div className="note create-zone-note">
+          Start with one hostname and one origin. After creation, the zone detail page becomes the place to finish setup, send proof, and inspect logs.
         </div>
 
         <div className="field">
@@ -88,7 +92,7 @@ export function NewDomainForm() {
               setHostname(event.target.value)
               setHostnameDirty(true)
             }}
-            placeholder="ready-demo.northstarcdn.test"
+            placeholder="ready-site.northstarcdn.test"
             value={hostname}
           />
           <div className="small muted">The public hostname visitors will use for this site.</div>
@@ -137,7 +141,7 @@ export function NewDomainForm() {
             Cancel
           </button>
         </div>
-      </div>
+      </section>
     </div>
   )
 }

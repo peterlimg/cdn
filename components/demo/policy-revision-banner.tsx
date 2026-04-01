@@ -9,7 +9,7 @@ export function PolicyRevisionBanner({
   const confirmed = activeRevisionId === appliedRevisionId
 
   return (
-    <div className="surface revision-banner">
+    <div className="surface revision-banner builder-subpanel revision-banner-builder">
       <div className="revision-banner-label">Active revision</div>
       <div className="revision-banner-value">{activeRevisionId}</div>
       <div className="small muted">

@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { sanitizeUiText } from "../../lib/ui/display"
 import type { RequestProof } from "../../services/shared/src/types"
 
 export function RequestProofPanel({
@@ -17,7 +18,7 @@ export function RequestProofPanel({
   onSendRequest: () => void
 }) {
   return (
-    <div className="surface stack request-proof-panel">
+    <div className="surface stack request-proof-panel builder-subpanel">
       <div className="section-header">
         <div>
           <span className="eyebrow">{domainStatus === "ready" ? "Live proof" : "Blocked proof"}</span>
@@ -57,7 +58,7 @@ export function RequestProofPanel({
                 </div>
               </div>
 
-              <p className="small proof-message">{proof.message}</p>
+              <p className="small proof-message">{sanitizeUiText(proof.message)}</p>
 
               <div className="proof-entry-meta small muted">
                 <span>Revision {proof.revisionId}</span>

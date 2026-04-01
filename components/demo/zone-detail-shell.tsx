@@ -74,7 +74,7 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
         onRequestComplete={refreshAnalytics}
       />
 
-      <div className="grid two-col">
+      <div className="grid two-col zone-detail-bottom-grid">
         <CachePolicyCard
           domainId={domain.id}
           cacheEnabled={Boolean(activeRevision?.cacheEnabled)}

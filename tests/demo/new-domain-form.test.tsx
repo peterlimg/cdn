@@ -30,7 +30,7 @@ describe("new domain form", () => {
   it("renders a simplified pull-zone style form", () => {
     render(<NewDomainForm />)
 
-    expect(screen.getByText("Connect a site to the CDN")).toBeInTheDocument()
+    expect(screen.getByText("Create a new pull zone")).toBeInTheDocument()
     expect(screen.getByLabelText("Zone name")).toBeInTheDocument()
     expect(screen.getByLabelText("Hostname")).toBeInTheDocument()
     expect(screen.getByLabelText("Origin URL")).toBeInTheDocument()
@@ -42,7 +42,7 @@ describe("new domain form", () => {
   it("uses the ready hostname by default", () => {
     render(<NewDomainForm />)
 
-    expect(screen.getByDisplayValue("ready-demo.northstarcdn.test")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("ready-site.northstarcdn.test")).toBeInTheDocument()
   })
 
 	it("keeps the public-origin defaults in the simplified form", () => {

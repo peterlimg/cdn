@@ -1,20 +1,21 @@
 import React from "react"
 import { redirect } from "next/navigation"
 import { AnalyticsPageShell } from "../../components/demo/analytics-page-shell"
+import { loginPath } from "../../lib/auth/navigation"
 import { getSession } from "../../lib/auth/session"
 import { fetchDashboardSnapshot } from "../../lib/demo/service-client"
 
 export default async function AnalyticsPage() {
   const session = await getSession()
   if (!session) {
-    redirect("/login")
+    redirect(loginPath("/analytics"))
   }
 
   const snapshot = await fetchDashboardSnapshot()
 
   return (
     <div className="grid stack">
-      <section className="surface stack">
+      <section className="surface stack builder-surface builder-grid">
         <div className="section-header">
           <div>
             <span className="eyebrow">Analytics</span>

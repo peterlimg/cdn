@@ -1,5 +1,6 @@
 import React from "react"
 import { DomainReadinessBadge } from "./domain-readiness-badge"
+import { sanitizeUiText } from "../../lib/ui/display"
 import type { DomainRecord } from "../../services/shared/src/types"
 
 export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
@@ -9,17 +10,17 @@ export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
 		: "Review the origin settings below, fix any failed checks, then verify DNS before sending traffic through the edge."
 
   return (
-    <div className="card stack">
+    <div className="card stack builder-card">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <span className="eyebrow">Site setup</span>
-          <h2>{domain.hostname}</h2>
-          <div className="small muted">{domain.projectName || "Unnamed site"}</div>
+          <h2>{sanitizeUiText(domain.hostname)}</h2>
+          <div className="small muted">{sanitizeUiText(domain.projectName || "Unnamed site")}</div>
         </div>
         <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
       </div>
 
-      <p className="muted">{domain.readinessNote}</p>
+      <p className="muted">{sanitizeUiText(domain.readinessNote)}</p>
 
 		<div className="list-item stack">
 			<div>
@@ -32,17 +33,17 @@ export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
 		<div className="list-item stack">
 			<div>
 				<span className="eyebrow">Zone summary</span>
-				<h4>{domain.setupPath === "existing-origin" ? "Existing origin connected" : domain.setupPath === "network-static" ? "Network static deployment path" : "Demo static origin path"}</h4>
+				<h4>{domain.setupPath === "existing-origin" ? "Existing origin connected" : domain.setupPath === "network-static" ? "Network static deployment path" : "Managed static origin path"}</h4>
 			</div>
         <div className="small muted">
           Origin status: {domain.originStatus || "pending"}. DNS status: {domain.dnsStatus || "pending"}. Setup stage: {domain.setupStage || "created"}.
         </div>
         {domain.lastOriginCheckAt ? (
           <div className="small muted">
-            Last origin check: {domain.lastOriginCheckOutcome || domain.originStatus || "pending"} at {domain.lastOriginCheckAt}
+            Last origin check: {sanitizeUiText(domain.lastOriginCheckOutcome || domain.originStatus || "pending")} at {domain.lastOriginCheckAt}
           </div>
         ) : null}
-        {domain.originValidationMessage ? <div className="small muted">{domain.originValidationMessage}</div> : null}
+        {domain.originValidationMessage ? <div className="small muted">{sanitizeUiText(domain.originValidationMessage)}</div> : null}
       </div>
     </div>
   )

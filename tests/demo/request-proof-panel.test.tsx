@@ -23,7 +23,7 @@ describe("request proof panel", () => {
             requestId: "req-123",
             traceId: "trace-123",
             domainId: "zone-1",
-            hostname: "ready-demo.northstarcdn.test",
+            hostname: "ready-site.northstarcdn.test",
             path: "/",
             timestamp: new Date("2026-03-31T00:00:00Z").toISOString(),
             revisionId: "rev-1",

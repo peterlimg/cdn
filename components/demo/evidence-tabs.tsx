@@ -82,7 +82,7 @@ export function EvidenceTabs({
 
   return (
     <div className="stack">
-      <div className="row">
+      <div className="row tab-row">
         <button className={tab === "proof" ? "button" : "button-secondary"} onClick={() => setTab("proof")} type="button">Request proof</button>
         <button className={tab === "edge" ? "button" : "button-secondary"} onClick={() => setTab("edge")} type="button">Rust edge logs</button>
         <button className={tab === "api" ? "button" : "button-secondary"} onClick={() => setTab("api")} type="button">Go API logs</button>

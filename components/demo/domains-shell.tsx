@@ -1,22 +1,27 @@
 import React from "react"
 import Link from "next/link"
 import { DomainReadinessBadge } from "./domain-readiness-badge"
-import type { DomainRecord } from "../../services/shared/src/types"
+import { formatPercent } from "../../lib/demo/format"
+import { sanitizeUiText } from "../../lib/ui/display"
+import type { DashboardSnapshot } from "../../services/shared/src/types"
 
-export function DomainsShell({ domains }: { domains: DomainRecord[] }) {
+export function DomainsShell({ snapshot }: { snapshot: DashboardSnapshot }) {
+  const { analytics, domains, quota } = snapshot
   const readyCount = domains.filter((domain) => domain.status === "ready").length
   const pendingCount = domains.length - readyCount
   const liveProofCount = domains.filter((domain) => domain.truthLabel === "live-proof").length
+  const setupQueue = domains.filter((domain) => domain.status !== "ready").slice(0, 3)
+  const proofReady = domains.filter((domain) => domain.status === "ready").slice(0, 3)
 
   return (
     <div className="grid stack">
-      <section className="surface stack">
-        <div className="section-header">
+      <section className="surface stack sites-index-shell builder-surface builder-grid">
+        <div className="section-header overview-header">
           <div>
             <span className="eyebrow">Pull zones</span>
-            <h2 className="section-title">Your sites</h2>
+            <h2 className="section-title">All sites</h2>
             <p className="section-copy muted">
-              Manage the hostnames routed through the edge and continue any zone that still needs setup or proof.
+              Browse every hostname routed through the edge and open the zone that needs work.
             </p>
           </div>
           <Link className="button" href="/domains/new?mode=ready&setupPath=existing-origin">
@@ -38,9 +43,9 @@ export function DomainsShell({ domains }: { domains: DomainRecord[] }) {
           </div>
         ) : (
           <>
-            <div className="stats-strip">
+            <div className="stats-strip stats-strip-dense section-meta">
               <div className="stat-tile">
-                <span className="stat-label">Total</span>
+                <span className="stat-label">Zones</span>
                 <strong className="stat-value">{domains.length}</strong>
               </div>
               <div className="stat-tile">
@@ -48,37 +53,114 @@ export function DomainsShell({ domains }: { domains: DomainRecord[] }) {
                 <strong className="stat-value">{readyCount}</strong>
               </div>
               <div className="stat-tile">
-                <span className="stat-label">Needs setup</span>
+                <span className="stat-label">Setup queue</span>
                 <strong className="stat-value">{pendingCount}</strong>
               </div>
               <div className="stat-tile">
                 <span className="stat-label">Live proof</span>
                 <strong className="stat-value">{liveProofCount}</strong>
               </div>
+              <div className="stat-tile">
+                <span className="stat-label">Requests</span>
+                <strong className="stat-value">{analytics.totalRequests}</strong>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">Quota used</span>
+                <strong className="stat-value">{formatPercent(quota.percentUsed)}</strong>
+              </div>
             </div>
 
-            <div className="list zone-list">
-              {domains.map((domain) => (
-                <div className="zone-row" key={domain.id}>
-                  <div className="zone-row-main">
-                    <div>
-                      <strong className="zone-row-title">{domain.projectName || domain.hostname}</strong>
-                      <div className="zone-row-meta">
-                        <span>{domain.hostname}</span>
-                        <span className="zone-row-separator" aria-hidden="true" />
-                        <span>Origin {domain.origin}</span>
+            <div className="grid app-workspace sites-workspace">
+              <div className="stack workspace-primary">
+                <div className="overview-list-header">
+                  <div>
+                    <span className="eyebrow">Zone directory</span>
+                    <h3 style={{ margin: "6px 0 0" }}>Every hostname on the edge</h3>
+                  </div>
+                  <p className="small muted inline-note">{domains.length} zones</p>
+                </div>
+
+                <div className="list zone-list">
+                  {domains.map((domain) => (
+                    <div className="zone-row zone-row-index" key={domain.id}>
+                      <div className="zone-row-main">
+                        <div>
+                          <strong className="zone-row-title">{sanitizeUiText(domain.projectName || domain.hostname)}</strong>
+                          <div className="zone-row-meta">
+                            <span>{sanitizeUiText(domain.hostname)}</span>
+                            <span className="zone-row-separator" aria-hidden="true" />
+                            <span>Origin {sanitizeUiText(domain.origin)}</span>
+                          </div>
+                        </div>
+                        <p className="small muted zone-row-note">{sanitizeUiText(domain.readinessNote)}</p>
+                      </div>
+                      <div className="zone-row-actions">
+                        <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
+                        <Link className="button-secondary" href={`/domains/${domain.id}`}>
+                          Open zone
+                        </Link>
                       </div>
                     </div>
-                    <p className="small muted zone-row-note">{domain.readinessNote}</p>
-                  </div>
-                  <div className="zone-row-actions">
-                    <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
-                    <Link className="button-secondary" href={`/domains/${domain.id}`}>
-                      Open zone
-                    </Link>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              <aside className="stack workspace-secondary">
+                <div className="surface surface-subtle stack support-panel builder-subpanel">
+                  <div>
+                    <span className="eyebrow">Setup queue</span>
+                    <h3 className="support-title">Zones still in progress</h3>
+                  </div>
+                  {setupQueue.length > 0 ? (
+                    <div className="mini-list">
+                      {setupQueue.map((domain) => (
+                        <div className="mini-block" key={domain.id}>
+                          <strong>{sanitizeUiText(domain.projectName || domain.hostname)}</strong>
+                          <p className="small muted support-copy">{sanitizeUiText(domain.readinessNote)}</p>
+                          <Link className="button-ghost support-link" href={`/domains/${domain.id}`}>
+                            Open setup
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="small muted support-copy">All current zones are ready for proof or already serving live requests.</p>
+                  )}
+                </div>
+
+                <div className="surface surface-subtle stack support-panel builder-subpanel">
+                  <div>
+                    <span className="eyebrow">Proof queue</span>
+                    <h3 className="support-title">Ready sites to validate</h3>
+                  </div>
+                  <div className="mini-list">
+                    {proofReady.map((domain) => (
+                      <div className="mini-row" key={domain.id}>
+                        <span className="mini-label">{sanitizeUiText(domain.projectName || domain.hostname)}</span>
+                        <Link className="button-ghost support-link" href={`/domains/${domain.id}`}>
+                          Proof
+                        </Link>
+                      </div>
+                    ))}
+                    <div className="mini-row">
+                      <span className="mini-label">Analytics freshness</span>
+                      <strong>{analytics.freshness}</strong>
+                    </div>
+                    <div className="mini-row">
+                      <span className="mini-label">Bandwidth quota</span>
+                      <strong>
+                        {quota.usedBytes.toLocaleString()} / {quota.limitBytes.toLocaleString()} B
+                      </strong>
+                    </div>
+                    <div className="metric-bar">
+                      <span style={{ width: `${quota.percentUsed}%` }} />
+                    </div>
+                  </div>
+                  <Link className="button-ghost" href="/analytics">
+                    Review analytics
+                  </Link>
+                </div>
+              </aside>
             </div>
           </>
         )}
