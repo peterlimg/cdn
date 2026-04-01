@@ -62,5 +62,6 @@
 - The public homepage now uses a sharper builder-style hero with console-like proof framing, and the authenticated Overview, Sites, Analytics, and zone detail surfaces now share that more technical visual grammar.
 - UI-facing uses of the word `demo` were removed from the frontend, including metadata, product copy, visible hostnames, and quota/value messaging.
 - Quota percentage tiles now round to a short display format so large decimal values no longer overflow the stat cards.
+- Analytics and zone detail now use denser split-workspace layouts so post-proof confirmation and active zone controls read like one operator surface instead of stacked generic cards.
 - Verification passed with `npm test -- tests/demo/dashboard-flow.test.tsx` and `npm run build`.
 - Added `docs/plans/2026-04-01-003-feat-multi-edge-pull-zone-targeting-plan.md`, which sequences control-plane placement modeling, multi-edge runtime topology, rollout telemetry, and zone-detail visibility while preserving the repo's onboarding and demo-honesty constraints.

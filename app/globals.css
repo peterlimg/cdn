@@ -823,6 +823,23 @@ select {
   min-height: 120px;
 }
 
+.analytics-shell {
+  gap: 16px;
+}
+
+.analytics-status-panel {
+  gap: 10px;
+}
+
+.analytics-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.analytics-detail-panel {
+  gap: 16px;
+}
+
 .zone-list {
   gap: 12px;
 }
@@ -934,6 +951,34 @@ select {
   align-items: start;
 }
 
+.zone-detail-shell {
+  gap: 16px;
+}
+
+.zone-detail-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.zone-detail-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.zone-detail-primary,
+.zone-detail-secondary {
+  min-width: 0;
+}
+
+.zone-detail-analytics-panel {
+  position: sticky;
+  top: 16px;
+}
+
 .proof-chip-muted {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.08);
@@ -1007,7 +1052,10 @@ select {
   .kpis,
   .stats-strip,
   .stats-strip-dense,
-  .app-workspace {
+  .app-workspace,
+  .analytics-detail-grid,
+  .zone-detail-hero-grid,
+  .zone-detail-main-grid {
     grid-template-columns: 1fr;
   }
 
