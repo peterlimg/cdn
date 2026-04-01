@@ -2,7 +2,7 @@ import React from "react"
 import Link from "next/link"
 import { DomainReadinessBadge } from "./domain-readiness-badge"
 import { formatPercent } from "../../lib/demo/format"
-import { sanitizeUiText } from "../../lib/ui/display"
+import { displayHostname, displayUiCopy } from "../../lib/ui/display"
 import type { DashboardSnapshot } from "../../services/shared/src/types"
 
 export function DomainsShell({ snapshot }: { snapshot: DashboardSnapshot }) {
@@ -85,14 +85,14 @@ export function DomainsShell({ snapshot }: { snapshot: DashboardSnapshot }) {
                     <div className="zone-row zone-row-index" key={domain.id}>
                       <div className="zone-row-main">
                         <div>
-                          <strong className="zone-row-title">{sanitizeUiText(domain.projectName || domain.hostname)}</strong>
+                          <strong className="zone-row-title">{displayUiCopy(domain.projectName || displayHostname(domain.hostname))}</strong>
                           <div className="zone-row-meta">
-                            <span>{sanitizeUiText(domain.hostname)}</span>
+                            <span>{displayHostname(domain.hostname)}</span>
                             <span className="zone-row-separator" aria-hidden="true" />
-                            <span>Origin {sanitizeUiText(domain.origin)}</span>
+                            <span>Origin {domain.origin}</span>
                           </div>
                         </div>
-                        <p className="small muted zone-row-note">{sanitizeUiText(domain.readinessNote)}</p>
+                        <p className="small muted zone-row-note">{displayUiCopy(domain.readinessNote)}</p>
                       </div>
                       <div className="zone-row-actions">
                         <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
@@ -115,8 +115,8 @@ export function DomainsShell({ snapshot }: { snapshot: DashboardSnapshot }) {
                     <div className="mini-list">
                       {setupQueue.map((domain) => (
                         <div className="mini-block" key={domain.id}>
-                          <strong>{sanitizeUiText(domain.projectName || domain.hostname)}</strong>
-                          <p className="small muted support-copy">{sanitizeUiText(domain.readinessNote)}</p>
+                          <strong>{displayUiCopy(domain.projectName || displayHostname(domain.hostname))}</strong>
+                          <p className="small muted support-copy">{displayUiCopy(domain.readinessNote)}</p>
                           <Link className="button-ghost support-link" href={`/domains/${domain.id}`}>
                             Open setup
                           </Link>
@@ -136,7 +136,7 @@ export function DomainsShell({ snapshot }: { snapshot: DashboardSnapshot }) {
                   <div className="mini-list">
                     {proofReady.map((domain) => (
                       <div className="mini-row" key={domain.id}>
-                        <span className="mini-label">{sanitizeUiText(domain.projectName || domain.hostname)}</span>
+                        <span className="mini-label">{displayUiCopy(domain.projectName || displayHostname(domain.hostname))}</span>
                         <Link className="button-ghost support-link" href={`/domains/${domain.id}`}>
                           Proof
                         </Link>

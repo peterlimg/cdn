@@ -2,7 +2,7 @@ import React from "react"
 import Link from "next/link"
 import { DomainReadinessBadge } from "./domain-readiness-badge"
 import { formatBytes, formatPercent } from "../../lib/demo/format"
-import { sanitizeUiText } from "../../lib/ui/display"
+import { displayHostname, displayUiCopy } from "../../lib/ui/display"
 import type { DashboardSnapshot } from "../../services/shared/src/types"
 
 export function OverviewShell({ snapshot }: { snapshot: DashboardSnapshot }) {
@@ -88,14 +88,14 @@ export function OverviewShell({ snapshot }: { snapshot: DashboardSnapshot }) {
                     <div className="zone-row zone-row-overview" key={domain.id}>
                       <div className="zone-row-main">
                         <div>
-                          <strong className="zone-row-title">{sanitizeUiText(domain.projectName || domain.hostname)}</strong>
+                          <strong className="zone-row-title">{displayUiCopy(domain.projectName || displayHostname(domain.hostname))}</strong>
                           <div className="zone-row-meta">
-                            <span>{sanitizeUiText(domain.hostname)}</span>
+                            <span>{displayHostname(domain.hostname)}</span>
                             <span className="zone-row-separator" aria-hidden="true" />
-                            <span>Origin {sanitizeUiText(domain.origin)}</span>
+                            <span>Origin {domain.origin}</span>
                           </div>
                         </div>
-                        <p className="small muted zone-row-note">{sanitizeUiText(domain.readinessNote)}</p>
+                        <p className="small muted zone-row-note">{displayUiCopy(domain.readinessNote)}</p>
                       </div>
                       <div className="zone-row-actions">
                         <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
@@ -117,13 +117,13 @@ export function OverviewShell({ snapshot }: { snapshot: DashboardSnapshot }) {
                   {nextDomain ? (
                     <>
                       <div>
-                        <strong className="zone-row-title">{sanitizeUiText(nextDomain.projectName || nextDomain.hostname)}</strong>
+                        <strong className="zone-row-title">{displayUiCopy(nextDomain.projectName || displayHostname(nextDomain.hostname))}</strong>
                         <div className="zone-row-meta" style={{ marginTop: 6 }}>
-                          <span>{sanitizeUiText(nextDomain.hostname)}</span>
+                          <span>{displayHostname(nextDomain.hostname)}</span>
                           <span className="zone-row-separator" aria-hidden="true" />
                           <span>{nextDomain.status === "ready" ? "Ready for proof" : "Needs setup"}</span>
                         </div>
-                        <p className="small muted support-copy">{sanitizeUiText(nextDomain.readinessNote)}</p>
+                        <p className="small muted support-copy">{displayUiCopy(nextDomain.readinessNote)}</p>
                       </div>
                       <div className="mini-list">
                         <div className="mini-row">
@@ -158,9 +158,9 @@ export function OverviewShell({ snapshot }: { snapshot: DashboardSnapshot }) {
                         <span className="proof-chip proof-chip-muted">{latestProof.finalDisposition}</span>
                       </div>
                       <div className="stack" style={{ gap: 6 }}>
-                        <strong className="zone-row-title">{sanitizeUiText(latestProof.hostname)}</strong>
+                        <strong className="zone-row-title">{displayHostname(latestProof.hostname)}</strong>
                         <p className="small muted support-copy">
-                          {sanitizeUiText(latestProof.message)} Revision {latestProof.revisionId} served {latestProof.bytesServed.toLocaleString()} bytes.
+                          {latestProof.message} Revision {latestProof.revisionId} served {latestProof.bytesServed.toLocaleString()} bytes.
                         </p>
                       </div>
                     </>

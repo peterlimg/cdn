@@ -1,6 +1,6 @@
 import React from "react"
 import { DomainReadinessBadge } from "./domain-readiness-badge"
-import { sanitizeUiText } from "../../lib/ui/display"
+import { displayHostname, displayUiCopy } from "../../lib/ui/display"
 import type { DomainRecord } from "../../services/shared/src/types"
 
 export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
@@ -14,13 +14,13 @@ export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <span className="eyebrow">Site setup</span>
-          <h2>{sanitizeUiText(domain.hostname)}</h2>
-          <div className="small muted">{sanitizeUiText(domain.projectName || "Unnamed site")}</div>
+          <h2>{displayHostname(domain.hostname)}</h2>
+          <div className="small muted">{displayUiCopy(domain.projectName || "Unnamed site")}</div>
         </div>
         <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
       </div>
 
-      <p className="muted">{sanitizeUiText(domain.readinessNote)}</p>
+      <p className="muted">{displayUiCopy(domain.readinessNote)}</p>
 
 		<div className="list-item stack">
 			<div>
@@ -40,10 +40,10 @@ export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
         </div>
         {domain.lastOriginCheckAt ? (
           <div className="small muted">
-            Last origin check: {sanitizeUiText(domain.lastOriginCheckOutcome || domain.originStatus || "pending")} at {domain.lastOriginCheckAt}
+            Last origin check: {domain.lastOriginCheckOutcome || domain.originStatus || "pending"} at {domain.lastOriginCheckAt}
           </div>
         ) : null}
-        {domain.originValidationMessage ? <div className="small muted">{sanitizeUiText(domain.originValidationMessage)}</div> : null}
+        {domain.originValidationMessage ? <div className="small muted">{domain.originValidationMessage}</div> : null}
       </div>
     </div>
   )

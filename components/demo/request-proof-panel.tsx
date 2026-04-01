@@ -1,7 +1,6 @@
 "use client"
 
 import React from "react"
-import { sanitizeUiText } from "../../lib/ui/display"
 import type { RequestProof } from "../../services/shared/src/types"
 
 export function RequestProofPanel({
@@ -58,7 +57,7 @@ export function RequestProofPanel({
                 </div>
               </div>
 
-              <p className="small proof-message">{sanitizeUiText(proof.message)}</p>
+              <p className="small proof-message">{proof.message}</p>
 
               <div className="proof-entry-meta small muted">
                 <span>Revision {proof.revisionId}</span>

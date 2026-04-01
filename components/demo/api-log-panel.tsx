@@ -1,5 +1,4 @@
 import React from "react"
-import { sanitizeUiText } from "../../lib/ui/display"
 import type { ServiceLog } from "../../services/shared/src/types"
 
 export function ApiLogPanel({ logs }: { logs: ServiceLog[] }) {
@@ -29,7 +28,7 @@ export function ApiLogPanel({ logs }: { logs: ServiceLog[] }) {
                 <span>Revision: {log.revisionId}</span>
                 <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
               </div>
-              <p className="small" style={{ marginBottom: 0 }}>{sanitizeUiText(log.message)}</p>
+              <p className="small" style={{ marginBottom: 0 }}>{log.message}</p>
             </div>
           ))}
         </div>

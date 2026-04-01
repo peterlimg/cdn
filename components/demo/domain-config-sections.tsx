@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import type { DNSRecord } from "../../services/shared/src/types"
-import { sanitizeUiText } from "../../lib/ui/display"
+import { displayRouteLabel } from "../../lib/ui/display"
 
 function DNSRow({ record }: { record: DNSRecord }) {
   return (
@@ -136,8 +136,8 @@ export function DomainConfigSections({
         <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <span className="eyebrow">Origin</span>
-            <h4 style={{ marginBottom: 4 }}>{sanitizeUiText(origin)}</h4>
-            <div className="small muted">Health check: {healthCheckPath || "/assets/site.css"}</div>
+            <h4 style={{ marginBottom: 4 }}>{origin}</h4>
+            <div className="small muted">Health check: {displayRouteLabel(healthCheckPath || "/assets/site.css")}</div>
           </div>
           <div className="badge pending">{proxyMode ?? "proxied"}</div>
         </div>
@@ -147,10 +147,10 @@ export function DomainConfigSections({
         </div>
         {lastOriginCheckAt ? (
           <div className="small muted">
-            Last origin check: {sanitizeUiText(lastOriginCheckOutcome || originStatus || "pending")} at {lastOriginCheckAt}
+            Last origin check: {lastOriginCheckOutcome || originStatus || "pending"} at {lastOriginCheckAt}
           </div>
         ) : null}
-        {originValidationMessage ? <div className="small muted">{sanitizeUiText(originValidationMessage)}</div> : null}
+        {originValidationMessage ? <div className="small muted">{originValidationMessage}</div> : null}
       </div>
 
       <div className="list-item stack builder-list-item">
@@ -190,7 +190,7 @@ export function DomainConfigSections({
         <div className="small muted">
 		  Next step: save the origin details, re-run the check if needed, then verify DNS when the origin is healthy.
         </div>
-        {originStatus === "failed" && originValidationMessage ? <div className="alert">{sanitizeUiText(originValidationMessage)}</div> : null}
+        {originStatus === "failed" && originValidationMessage ? <div className="alert">{originValidationMessage}</div> : null}
         {error ? <div className="alert">{error}</div> : null}
         <div className="row">
           <button

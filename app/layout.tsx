@@ -4,7 +4,6 @@ import Link from "next/link"
 import { LogoutButton } from "../components/auth/logout-button"
 import { loginPath } from "../lib/auth/navigation"
 import { getSession } from "../lib/auth/session"
-import { sanitizeUiText } from "../lib/ui/display"
 import "./globals.css"
 
 export const metadata: Metadata = {
