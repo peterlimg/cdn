@@ -26,12 +26,36 @@ Client → Nginx (:8080)
 2. **Create a site** — domain/zone with hostname and origin
 3. **Configure origin** — health-check probing, DNS verification
 4. **Publish cache policy** — enable caching, see revision history
-5. **Send requests** — live request evaluation through the Rust edge (BYPASS → MISS → HIT)
+5. **Send public requests** — live request evaluation through the Rust edge (BYPASS → MISS → HIT)
 6. **View evidence** — request proofs, structured service logs, analytics
 7. **Hit quota limits** — free-plan bandwidth enforcement (150KB), blocked requests
 8. **Rollback** — revert cache policy to baseline
 
 Edge request outcomes: `BYPASS`, `MISS`, `HIT`, `BLOCKED_QUOTA`, `BLOCKED_PENDING`, `BLOCKED_WAF`, `BLOCKED_RATE_LIMIT`, `ORIGIN_ERROR`.
+
+## Current Support Boundary
+
+This project currently supports a `public/static-site CDN demo`, not a full application-delivery CDN.
+
+Supported now:
+- public/static origins behind the CDN
+- hostname-to-origin routing
+- Rust edge cache behavior for public traffic
+- proof, logs, and analytics for the public request path
+- operator login to the dashboard
+
+Not safely supported yet:
+- customer sites whose origin behavior depends on end-user login or credentials
+- authenticated app traffic using `Cookie`, `Authorization`, or other request credentials
+- login/logout/session-establishing flows that depend on response headers like `Set-Cookie`
+- personalized or private responses that must never be shared through edge cache
+- general dynamic application traffic that requires full request/response passthrough
+
+Why this boundary exists:
+- the current Rust edge proxy path is static-first and does not yet preserve the full request semantics needed by authenticated origins
+- the current shared cache model is not safe for personalized responses
+
+If you need mixed public/private site support later, the smallest safe next step is usually protected-route bypass rather than full authenticated caching.
 
 ## Prerequisites
 
@@ -149,7 +173,7 @@ docs/demo/            Demo documentation and runbooks
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/request` | Evaluate a request (returns proof JSON) |
-| GET | `/proxy/{path}` | Proxy to origin with edge headers |
+| GET | `/proxy/{path}` | Proxy public origin content with edge headers |
 | POST | `/reset` | Clear file-based cache |
 
 ## Documentation
