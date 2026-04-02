@@ -3,7 +3,7 @@
 ## What each surface proves
 
 ### Request proof
-- Best for the buyer.
+- Best for quick verification.
 - Shows `request_id`, `trace_id`, cache status, revision, bytes served, and quota state.
 - Answer to: `What happened for this request?`
 
@@ -18,7 +18,7 @@
 - Answer to: `Where did the API service participate?`
 
 ### Analytics
-- Best for buyer-readable confirmation, not first-response debugging.
+- Best for readable confirmation, not first-response debugging.
 - Now intended to come from ClickHouse-backed append-only request events when available.
 - If freshness is `updating` or `degraded`, prefer request proof and service logs as the immediate truth.
 

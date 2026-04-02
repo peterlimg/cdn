@@ -11,11 +11,11 @@ deepened: 2026-03-31
 
 ## Overview
 
-Package the current Rust edge, Go API/control, and Next.js dashboard demo into a reproducible Docker Compose setup, replace the current shortcut-style domain creation flow with a clearer guided onboarding flow, and add one deliberately narrow WAF proof path to the Rust edge. The result should make the demo easier to run, easier to hand off, and more credible for a buyer who wants to see how a customer would configure a domain and how a basic protection rule would affect live traffic.
+Package the current Rust edge, Go API/control, and Next.js dashboard demo into a reproducible Docker Compose setup, replace the current shortcut-style domain creation flow with a clearer guided onboarding flow, and add one deliberately narrow WAF proof path to the Rust edge. The result should make the demo easier to run, easier to hand off, and more credible for someone reviewing how a user would configure a domain and how a basic protection rule would affect live traffic.
 
 ## Problem Statement / Motivation
 
-The current demo now proves the architecture split well, but three gaps remain in the client-facing story:
+The current demo now proves the architecture split well, but three gaps remain in the product story:
 
 1. It still depends on local dev startup knowledge rather than a portable, one-command packaging story.
 2. The current `/domains/new` flow is only a shortcut that auto-creates a pending or ready demo domain, so it does not feel like a real user onboarding path.
@@ -29,7 +29,7 @@ Build the next iteration around three bounded additions:
 
 - **Compose packaging**: add container packaging for the existing three-service demo so another engineer can run the full stack with Docker Compose and reach the same walkthrough reliably.
 - **Guided onboarding**: replace the current auto-create route with a task-oriented domain onboarding form and detail flow that collects hostname, origin, onboarding mode, and readiness expectations explicitly.
-- **Basic WAF proof loop**: add one buyer-readable WAF rule, enforced in Rust, with correlated proof/log/analytics outcomes visible in the existing evidence surfaces.
+- **Basic WAF proof loop**: add one readable WAF rule, enforced in Rust, with correlated proof/log/analytics outcomes visible in the existing evidence surfaces.
 
 The main narrative should remain: `create or review domain -> publish cache/WAF policy -> send request -> inspect proof/logs -> observe analytics/quota`. Caching remains the primary value story. WAF is an adjacent control that proves the edge can also block traffic for a specific, visible reason.
 
@@ -92,9 +92,9 @@ The main narrative should remain: `create or review domain -> publish cache/WAF 
 - Replace the current `app/domains/new/page.tsx` auto-create redirect with a real page that renders a form and posts a richer domain-creation payload to Go.
 - Extend the domain model to store onboarding inputs explicitly, at minimum hostname, origin, demo mode, and an optional initial protection policy shape. Any additional fields should be justified by the live walkthrough, not by future product imagination.
 - Represent onboarding in a user-readable sequence: enter hostname, set origin, review DNS records, choose demo state, confirm result. The UI should explain why a domain is still pending versus ready.
-- Add one basic WAF rule to the policy model. The minimal rule should be something the buyer can understand immediately, such as `block a specific path prefix` or `block requests carrying a specific header`. Path-prefix blocking is the simplest option because it is easy to exercise from the current request form and easy to show in proof/logs.
-- Keep cache and WAF in one policy surface, but visually separate them so the buyer understands they are different edge controls.
-- Extend request proof status vocabulary carefully. It should remain compact and buyer-readable, for example by adding a WAF-specific blocked state rather than inventing a large taxonomy.
+- Add one basic WAF rule to the policy model. The minimal rule should be something a reviewer can understand immediately, such as `block a specific path prefix` or `block requests carrying a specific header`. Path-prefix blocking is the simplest option because it is easy to exercise from the current request form and easy to show in proof/logs.
+- Keep cache and WAF in one policy surface, but visually separate them so it is clear they are different edge controls.
+- Extend request proof status vocabulary carefully. It should remain compact and readable, for example by adding a WAF-specific blocked state rather than inventing a large taxonomy.
 - Keep analytics as the confirmation layer. WAF needs only minimal derived metrics, such as blocked-request count, and must not complicate the existing quota math.
 - Treat commit/push as an operational follow-up, not part of the technical implementation scope. If the user later asks to commit, use the finished diff and the repo’s commit flow then.
 
@@ -118,7 +118,7 @@ The main narrative should remain: `create or review domain -> publish cache/WAF 
 
 ```mermaid
 flowchart LR
-  USER[Presenter or Reviewer] --> UI[Next.js Dashboard]
+  USER[Reviewer] --> UI[Next.js Dashboard]
   UI --> GO[Go API / Control]
   USER --> EDGE[Rust Edge Request Path]
   GO --> STATE[(In-memory Demo State)]
@@ -176,7 +176,7 @@ The important property is unchanged: the dashboard writes and reads through Go, 
 - Package the UI, Go API, and Rust edge as three explicit services.
 - Use environment variables or service-host defaults so the containers can talk to one another without hardcoded `127.0.0.1` assumptions.
 - Keep the external ports aligned with the existing docs if possible: UI `3000`, Go `4001`, Rust `4002`.
-- Add a Compose-friendly startup command that favors repeatability and client-demo readiness over dev hot reload.
+- Add a Compose-friendly startup command that favors repeatability and demo readiness over dev hot reload.
 - Update runbook steps to show both the current local-toolchain flow and the new Compose flow.
 
 **Test scenarios:**
@@ -222,7 +222,7 @@ The important property is unchanged: the dashboard writes and reads through Go, 
 - Integration: the created domain state shown in the form, domains list, and zone detail all match the Go service response.
 
 **Verification:**
-- A viewer can understand how a user would onboard a domain without needing the presenter to explain a hidden shortcut.
+- A viewer can understand how a user would onboard a domain without needing extra explanation about a hidden shortcut.
 
 - [ ] **Unit 3: Extend policy state with one basic WAF rule**
 
@@ -289,11 +289,11 @@ The important property is unchanged: the dashboard writes and reads through Go, 
 - Integration: request proof, edge logs, and API logs all show the same request ID, revision ID, and WAF outcome.
 
 **Verification:**
-- A presenter can enable the WAF rule, send a matching request, and show a real Rust-edge block reason tied to the active revision.
+- A reviewer can enable the WAF rule, send a matching request, and show a real Rust-edge block reason tied to the active revision.
 
 - [ ] **Unit 5: Add minimal WAF analytics and presentation guidance**
 
-**Goal:** Fold the new WAF behavior into the buyer-facing confirmation and operating docs without overwhelming the story.
+**Goal:** Fold the new WAF behavior into the confirmation and operating docs without overwhelming the story.
 
 **Requirements:** R5, R6, R7
 
@@ -317,8 +317,8 @@ The important property is unchanged: the dashboard writes and reads through Go, 
 
 **Test scenarios:**
 - Happy path: analytics, proof, and logs remain consistent after a WAF-blocked request.
-- Edge case: the docs explain how WAF and cache relate so the presenter does not imply blocked traffic was cached.
-- Error path: if analytics lag after a WAF block, the runbook points the presenter back to request proof and logs as the primary evidence.
+- Edge case: the docs explain how WAF and cache relate so the docs do not imply blocked traffic was cached.
+- Error path: if analytics lag after a WAF block, the runbook points back to request proof and logs as the primary evidence.
 - Integration: the updated demo script matches the actual onboarding, Compose, cache, and WAF flows.
 
 **Verification:**
@@ -328,7 +328,7 @@ The important property is unchanged: the dashboard writes and reads through Go, 
 
 - The demo can be started through Docker Compose and passes the same core walkthrough.
 - The `/domains/new` experience feels like a user workflow rather than a hidden demo shortcut.
-- A buyer can see one real WAF-style edge block reason in request proof and logs.
+- A reviewer can see one real WAF-style edge block reason in request proof and logs.
 - The WAF addition does not obscure or break the cache-proof and quota stories.
 
 ## Dependencies & Risks
@@ -341,7 +341,7 @@ The important property is unchanged: the dashboard writes and reads through Go, 
 | Policy state becomes harder to understand once cache and WAF share revisions | Keep the UI split into separate cards with one shared revision banner |
 | Request precedence becomes confusing between pending, quota, and WAF blocks | Define precedence explicitly during implementation and cover it with tests |
 | Hardcoded local URLs break inside containers | Move service endpoints behind environment-aware configuration before verifying Compose |
-| The presenter overclaims the WAF story | Update claim guardrails and runbook language to keep the scope narrow and explicit |
+| The docs overclaim the WAF story | Update claim guardrails and runbook language to keep the scope narrow and explicit |
 
 ## References & Research
 

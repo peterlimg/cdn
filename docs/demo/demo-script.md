@@ -3,7 +3,7 @@
 ## Main walkthrough
 
 1. Start on `/domains` and explain the runtime split: Next.js dashboard, Go API/control service, and Rust edge service.
-2. Create a `ready` demo domain. Call out that the onboarding UI now creates the control-plane record explicitly, and that `ready` is the demo readiness mode used to allow immediate proof in the pitch.
+2. Create a `ready` demo domain. Call out that the onboarding UI now creates the control-plane record explicitly, and that `ready` is the demo readiness mode used to allow immediate proof in review.
 3. Open the zone detail page. Point out the explicit config sections: origin target, DNS records, readiness contract, active revision, request route hint, and the real proxied request-path check URL.
 4. Use the **Request proof** tab and send one request through the edge. The first proof should show `BYPASS` under the baseline revision.
 5. Switch briefly to **Go API logs** and explain that the control plane served config and ingested the event for that request.
@@ -27,7 +27,7 @@ The default walkthrough is tuned so quota is reached before rate limiting. If yo
 
 | Screen | Primary message | Single proof point | Next transition |
 | --- | --- | --- | --- |
-| `/domains` | This is the customer control-plane entry point | Ready vs pending domain creation + runtime split | Create a ready zone |
+| `/domains` | This is the main control-plane entry point | Ready vs pending domain creation + runtime split | Create a ready zone |
 | `/domains/[id]` config | Domain setup is explicit, not implied | DNS records + origin + readiness contract | Show request route + revision |
 | `/domains/[id]` proof | The Rust edge is making real request decisions | Request ID + cache status + trace ID | Open logs |
 | `/domains/[id]` edge logs | The edge explains cache/serve/block outcomes | Structured Rust log entry | Open API logs |

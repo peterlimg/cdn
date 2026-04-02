@@ -11,7 +11,7 @@ date: 2026-04-01
 
 The analytics UI can tell the user `ClickHouse-backed analytics are currently unavailable` even when ClickHouse itself is healthy and the Go API health endpoint is green. The root cause is a sticky in-memory degraded flag inside the Go store that latches after a ClickHouse insert or query failure and short-circuits future ClickHouse summary reads until reset or process restart.
 
-This plan fixes the mismatch between real service health and buyer-facing analytics freshness while preserving the repo's evidence hierarchy: request proof and service logs stay immediate truth, analytics stay derived confirmation.
+This plan fixes the mismatch between real service health and user-facing analytics freshness while preserving the repo's evidence hierarchy: request proof and service logs stay immediate truth, analytics stay derived confirmation.
 
 ## Problem Statement
 
@@ -84,7 +84,7 @@ That means one transient failure can leave the app saying ClickHouse is unavaila
 
 ### Repo-Local Learnings
 
-- `docs/demo/logs-and-evidence-guide.md:20-29`: analytics are buyer-readable confirmation, not first-response debugging.
+- `docs/demo/logs-and-evidence-guide.md:20-29`: analytics are readable confirmation, not first-response debugging.
 - `docs/demo/presentation-readiness-checklist.md:9-13`: keep the narrative anchored on `config -> proof -> logs -> analytics`.
 - `docs/plans/2026-03-31-feat-stack-aligned-cdn-prototype-evolution-plan.md:534-540`: degraded analytics were intentionally made explicit, and recovery via reset/reseed was preferred after replay risks were removed.
 - `docs/demo/reset-and-reseed.md:20-30`: reset is the explicit trust-restoration path today.
@@ -198,7 +198,7 @@ Reasoning:
 
 - [x] **Unit 3: Tighten UI copy only if needed**
 
-**Goal:** Keep buyer-facing wording accurate after the backend change.
+**Goal:** Keep user-facing wording accurate after the backend change.
 
 **Files:**
 - `components/demo/analytics-page-shell.tsx`

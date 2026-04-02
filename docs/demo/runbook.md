@@ -104,7 +104,7 @@ curl -i "http://127.0.0.1:3000/api/proxy-check?domainId=<zone-id>&path=%2F"
 
 The first request should return `X-Cache-Status: BYPASS` or `MISS` depending on cache policy. A repeated request with cache enabled should return `X-Cache-Status: HIT`.
 
-The same proxied path URL is shown in the zone detail flow through the configured route hint, so the presenter does not need to rebuild it manually during a walkthrough. The UI-hosted proxy-check route works both on the direct UI port and through ingress-backed demos.
+The same proxied path URL is shown in the zone detail flow through the configured route hint, so you do not need to rebuild it manually during a walkthrough. The UI-hosted proxy-check route works both on the direct UI port and through ingress-backed demos.
 
 ## Useful logs during local development
 

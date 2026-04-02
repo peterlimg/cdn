@@ -116,7 +116,7 @@ The feature therefore has to solve three things together:
   Rationale: once multiple edges exist, a proof without node attribution is not strong enough to explain placement or diagnose partial rollout.
 
 - Keep public demo claims conservative even after multiple local edges exist.
-  Rationale: local multi-edge deployment proves architecture shape and rollout mechanics; it does not automatically justify buyer-facing claims about a global production CDN footprint.
+  Rationale: local multi-edge deployment proves architecture shape and rollout mechanics; it does not automatically justify external claims about a global production CDN footprint.
 
 ## Open Questions
 
@@ -383,7 +383,7 @@ flowchart TB
 **Approach:**
 - Add a placement summary to the zone detail header area so the user sees whether the zone targets all eligible nodes or a pinned subset.
 - Show per-node rollout state close to the existing revision/apply banner, including a clear distinction between pending rollout and confirmed apply.
-- Add node identity to proof and log presentation so a reviewer can tell which edge served a request.
+- Add node identity to proof and log presentation so it is clear which edge served a request.
 - Keep the copy honest: one successful proof from one node must not be presented as "all edges live" when other targeted nodes are still pending or failed.
 - If node-specific verification routes land in Unit 3, use them as secondary detail rather than making them the dominant onboarding action.
 - Preserve any future domain-scoped mutation path behind the existing `app/api/domains/[domainId]/route.ts` proxy pattern instead of adding direct browser-to-Go mutations for rollout-related actions.
@@ -420,7 +420,7 @@ flowchart TB
 
 **Approach:**
 - Document the local multi-edge topology and how node-specific verification works.
-- Update the guardrails so reviewers and presenters distinguish "multi-edge rollout visible in the demo" from "production-ready global routing."
+- Update the guardrails so reviewers distinguish "multi-edge rollout visible in the demo" from "production-ready global routing."
 - Capture the intended verification story for all-eligible vs subset zones so future UI changes do not regress the honesty boundary.
 
 **Patterns to follow:**
