@@ -1,6 +1,6 @@
 # Northstar CDN
 
-A client-facing demo of a CDN control-plane and edge platform. Built to walk prospective clients through a believable end-to-end CDN setup journey — from domain onboarding to cache policy management, live request evaluation, and analytics.
+A CDN control-plane and edge prototype with a Next.js dashboard, Go control plane, and Rust edge runtime. It supports domain management, cache policy changes, public request evaluation, and evidence surfaces such as proofs, logs, and analytics.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ Client → Nginx (:8080)
              └── /*       → Next.js UI (:3000) → Go API (:4001)
 ```
 
-## What the Demo Covers
+## Current Capabilities
 
 1. **Sign in** — cookie-based HMAC session auth
 2. **Create a site** — domain/zone with hostname and origin
@@ -35,7 +35,7 @@ Edge request outcomes: `BYPASS`, `MISS`, `HIT`, `BLOCKED_QUOTA`, `BLOCKED_PENDIN
 
 ## Current Support Boundary
 
-This project currently supports a `public/static-site CDN demo`, not a full application-delivery CDN.
+This project currently supports `public/static-site traffic`, not a full application-delivery CDN.
 
 Supported now:
 - public/static origins behind the CDN
@@ -178,9 +178,9 @@ docs/demo/            Demo documentation and runbooks
 
 ## Documentation
 
-See `docs/demo/` for detailed guides:
+See `docs/demo/` for runtime guides and reference docs:
 
-- [Demo Script](docs/demo/demo-script.md) — presentation walkthrough
+- [Demo Script](docs/demo/demo-script.md) — scripted end-to-end walkthrough
 - [Service Map](docs/demo/service-map.md) — architecture and request flow
 - [Runbook](docs/demo/runbook.md) — operational procedures
 - [Reset & Reseed](docs/demo/reset-and-reseed.md) — demo state management
