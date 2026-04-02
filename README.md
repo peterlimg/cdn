@@ -1,6 +1,49 @@
 # Northstar CDN
 
-A CDN control-plane and edge prototype with a Next.js dashboard, Go control plane, and Rust edge runtime. It supports domain management, cache policy changes, public request evaluation, and evidence surfaces such as proofs, logs, and analytics.
+Northstar CDN is a CDN control plane and edge runtime built with Rust, Go, and TypeScript.
+
+It includes:
+- domain onboarding
+- DNS verification flow
+- origin configuration and health checks
+- cache policy publishing and revision handling
+- edge request evaluation
+- request outcomes such as BYPASS, MISS, and HIT
+- basic WAF behavior
+- rate limiting
+- quota enforcement
+- analytics, logs, and request proofs
+- multi-edge deployment topology
+
+The system is backed by PostgreSQL, Redis, ClickHouse, Nginx, and Docker Compose.
+
+## Overview
+
+Northstar CDN is a working CDN platform prototype with clear separation between the control plane, edge runtime, analytics pipeline, and operator dashboard.
+
+The platform combines:
+- Rust for edge request handling, cache behavior, and WAF-style filtering
+- Go for control plane APIs, domain state, policy management, and traffic coordination
+- TypeScript / Next.js for the dashboard and operator-facing interface
+- PostgreSQL, Redis, and ClickHouse for durable state, counters, and analytics
+- Nginx and Docker Compose for ingress and multi-service orchestration
+
+It is designed around core CDN workflows: onboarding domains, validating origin setup, publishing cache behavior, evaluating requests at the edge, enforcing limits, and exposing evidence through logs, analytics, and request proofs.
+
+## Current Capabilities
+
+- Sign in to the dashboard
+- Create and manage domains / zones
+- Configure origins and run health checks
+- Model and verify DNS setup flow
+- Publish cache policy revisions
+- Route requests through the edge runtime
+- Observe cache transitions from BYPASS to MISS to HIT
+- Apply basic WAF blocking on suspicious request paths
+- Enforce Redis-backed rate limits
+- Enforce quota limits at the request path
+- Review analytics, structured logs, and request proof events
+- Simulate multi-edge rollout across 3 edge nodes
 
 ## Architecture
 
@@ -12,30 +55,76 @@ Three-service runtime:
 | API | Go 1.22 | 4001 | Control plane, persistence, rate limiting |
 | Edge | Rust (axum 0.8) | 4002 | Request evaluation, file-based caching, WAF |
 
-Supporting infrastructure: PostgreSQL 17, Redis 7, ClickHouse 25.3, Nginx 1.27 (ingress).
+Supporting infrastructure: PostgreSQL 17, Redis 7, ClickHouse 25.3, Nginx 1.27.
 
-```
+```text
 Client → Nginx (:8080)
-             ├── /edge/*  → Rust edge (:4002)
-             └── /*       → Next.js UI (:3000) → Go API (:4001)
+             ├── /edge/*  → Rust edge
+             └── /*       → Next.js UI → Go API
 ```
 
-## Current Capabilities
+### Service Responsibilities
 
-1. **Sign in** — cookie-based HMAC session auth
-2. **Create a site** — domain/zone with hostname and origin
-3. **Configure origin** — health-check probing, DNS verification
-4. **Publish cache policy** — enable caching, see revision history
-5. **Send public requests** — live request evaluation through the Rust edge (BYPASS → MISS → HIT)
-6. **View evidence** — request proofs, structured service logs, analytics
-7. **Hit quota limits** — free-plan bandwidth enforcement (150KB), blocked requests
-8. **Rollback** — revert cache policy to baseline
+Rust
+- edge request pipeline
+- cache lookup and cache store behavior
+- WAF-style request filtering
+- request evaluation and proof generation
+- origin fetch path for eligible traffic
 
-Edge request outcomes: `BYPASS`, `MISS`, `HIT`, `BLOCKED_QUOTA`, `BLOCKED_PENDING`, `BLOCKED_WAF`, `BLOCKED_RATE_LIMIT`, `ORIGIN_ERROR`.
+Go
+- control plane APIs
+- domain and origin state
+- policy publication and revision tracking
+- internal edge coordination
+- quota and analytics summary APIs
 
-## Current Support Boundary
+TypeScript / Next.js
+- dashboard
+- onboarding UI
+- operator workflows
+- proof / log / analytics views
 
-This project currently supports `public/static-site traffic`, not a full application-delivery CDN.
+PostgreSQL
+- durable control-plane state
+
+Redis
+- counters
+- rate-limit state
+- short-lived coordination data
+
+ClickHouse
+- analytics and event storage
+
+Nginx
+- ingress / proxy layer
+
+## Multi-Edge Topology
+
+The local stack includes 3 named edge nodes:
+- US East
+- EU West
+- AP South
+
+This allows the system to demonstrate early regional rollout patterns and edge-targeted behavior across multiple runtimes.
+
+## Request Outcomes
+
+Northstar CDN currently surfaces request outcomes including:
+- `BYPASS`
+- `MISS`
+- `HIT`
+- `BLOCKED_PENDING`
+- `BLOCKED_WAF`
+- `BLOCKED_RATE_LIMIT`
+- `BLOCKED_QUOTA`
+- `ORIGIN_ERROR`
+
+These outcomes are reflected through proof events, logs, and analytics.
+
+## Scope Boundary
+
+Northstar CDN is a working CDN prototype with a defined scope. It currently focuses on core CDN workflows and public traffic delivery patterns.
 
 Supported now:
 - public/static origins behind the CDN
@@ -51,11 +140,33 @@ Not safely supported yet:
 - personalized or private responses that must never be shared through edge cache
 - general dynamic application traffic that requires full request/response passthrough
 
-Why this boundary exists:
-- the current Rust edge proxy path is static-first and does not yet preserve the full request semantics needed by authenticated origins
-- the current shared cache model is not safe for personalized responses
+Current support is strongest around core CDN behavior, request handling, and operator visibility rather than full authenticated application delivery.
 
-If you need mixed public/private site support later, the smallest safe next step is usually protected-route bypass rather than full authenticated caching.
+## Demo Flow
+
+A typical end-to-end flow looks like this:
+
+1. Create a domain
+2. Configure the origin
+3. Verify setup state
+4. Publish a cache policy revision
+5. Send traffic through the edge runtime
+6. Observe MISS on the first request and HIT on repeated requests
+7. Review proofs, logs, and analytics
+8. Continue traffic until quota is reached and confirm blocking behavior
+
+For a scripted walkthrough, see `docs/demo/demo-script.md`.
+
+## Tech Stack
+
+- Rust
+- Go
+- TypeScript / Next.js
+- Nginx
+- PostgreSQL
+- Redis
+- ClickHouse
+- Docker Compose
 
 ## Prerequisites
 
@@ -70,11 +181,11 @@ If you need mixed public/private site support later, the smallest safe next step
 make up
 ```
 
-This starts all 7 services. Open `http://localhost:8080`.
+This starts the full local stack. Open `http://localhost:8080`.
 
 Default tokens are set in the Makefile:
-- `DEMO_RESET_TOKEN=demo-reset`
-- `INTERNAL_API_TOKEN=demo-internal-token`
+- `DEMO_RESET_TOKEN=***`
+- `INTERNAL_API_TOKEN=demo-i...oken`
 
 ## Local Development
 
@@ -105,7 +216,7 @@ npm run dev:edge   # Rust edge on :4002
 |----------|---------|-------------|
 | `INTERNAL_API_TOKEN` | `demo-internal-token` | Inter-service auth token |
 | `DEMO_RESET_TOKEN` | `demo-reset` | Auth token for reset/reseed routes |
-| `DATABASE_URL` | `postgres://postgres:postgres@127.0.0.1:5433/cdn_demo?sslmode=disable` | PostgreSQL connection |
+| `DATABASE_URL` | `postgres://postgres:***@127.0.0.1:5433/cdn_demo?sslmode=disable` | PostgreSQL connection |
 | `REDIS_URL` | `redis://127.0.0.1:6381/0` | Redis connection |
 | `CLICKHOUSE_URL` | *(empty = disabled)* | ClickHouse connection (analytics degrade gracefully without it) |
 | `CLICKHOUSE_USER` | `default` | ClickHouse HTTP username |
@@ -127,7 +238,6 @@ make build          # All Docker images
 
 ```bash
 make test           # All tests
-
 npm test            # Vitest (component + service tests)
 make test-go        # Go tests
 make test-rust      # Rust tests
@@ -135,11 +245,11 @@ make test-rust      # Rust tests
 
 ## Project Structure
 
-```
+```text
 app/                  Next.js pages and API route proxies
-components/           React components (auth, demo UI)
+components/           React components
 lib/                  Session management, service client, types
-services/             TypeScript service logic (used in tests)
+services/             TypeScript service logic
 api-go/               Go control-plane API
   cmd/server/         Entry point
   internal/           Handlers, state store, analytics, rate limiting
@@ -187,3 +297,7 @@ See `docs/demo/` for runtime guides and reference docs:
 - [Claims Guardrails](docs/demo/demo-claims-guardrails.md) — what to claim vs. not
 - [Logs & Evidence Guide](docs/demo/logs-and-evidence-guide.md) — log interpretation
 - [Readiness Checklist](docs/demo/presentation-readiness-checklist.md) — pre-demo checks
+
+## Summary
+
+Northstar CDN brings together edge request handling, control-plane APIs, analytics, and dashboard workflows in a single multi-service CDN platform prototype. It demonstrates the core mechanics of domain onboarding, cache behavior, traffic enforcement, operational visibility, and phased edge rollout in a stack built with Rust, Go, and TypeScript.
