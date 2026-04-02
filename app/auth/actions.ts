@@ -1,6 +1,7 @@
 "use server"
 
 import { redirect } from "next/navigation"
+import { sanitizeNextPath } from "../../lib/auth/navigation"
 import { clearSession, createSession } from "../../lib/auth/session"
 
 export type AuthActionState = {
@@ -10,6 +11,7 @@ export type AuthActionState = {
 export async function loginAction(_prevState: AuthActionState, formData: FormData): Promise<AuthActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
+  const nextPath = sanitizeNextPath(String(formData.get("next") ?? "")) ?? "/"
 
   if (!email || !password) {
     return { error: "Email and password are required." }
@@ -24,7 +26,7 @@ export async function loginAction(_prevState: AuthActionState, formData: FormDat
   }
 
   await createSession(email)
-  redirect("/domains")
+  redirect(nextPath)
 }
 
 export async function logoutAction() {
