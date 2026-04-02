@@ -17,6 +17,8 @@ It includes:
 
 The system is backed by PostgreSQL, Redis, ClickHouse, Nginx, and Docker Compose.
 
+Walkthrough video: https://www.loom.com/share/10feee78bdef4a4499c15a8e79b2aefa
+
 ## Overview
 
 Northstar CDN is a working CDN platform prototype with clear separation between the control plane, edge runtime, analytics pipeline, and operator dashboard.
@@ -156,6 +158,8 @@ A typical end-to-end flow looks like this:
 8. Continue traffic until quota is reached and confirm blocking behavior
 
 For a scripted walkthrough, see `docs/demo/demo-script.md`.
+
+Video walkthrough: https://www.loom.com/share/10feee78bdef4a4499c15a8e79b2aefa
 
 ## Tech Stack
 
