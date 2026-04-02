@@ -11,6 +11,8 @@ date: 2026-04-01
 
 Simplify the current onboarding and setup experience so a user can move from `"I created a site"` to `"I saw first proof through the CDN"` without parsing multiple competing cards, conflicting state labels, or architecture-heavy detail.
 
+**Primary persona:** A demo evaluator or potential customer seeing the CDN product for the first time during a guided or self-serve walkthrough. The components live under `components/demo/` because the product is currently in a demo/proof-of-concept stage, not because there is a separate "real" onboarding path. Simplification optimizes the narrative for this evaluator persona while preserving the technical depth reviewers need via progressive disclosure.
+
 This plan is a focused follow-up to `docs/plans/2026-03-31-feat-real-user-cdn-onboarding-flow-plan.md`. That earlier plan established the end-to-end real-user setup journey. This plan narrows in on information architecture, copy, progressive disclosure, and screen hierarchy so the existing implementation becomes easier to follow.
 
 ## Problem Frame
@@ -76,14 +78,17 @@ The result is a workspace that is technically rich but cognitively noisy. The pr
 - Treat this as an information-architecture simplification first, not a backend-state expansion task.
   Rationale: the current confusion comes mainly from presentation order, copy conflicts, and equal-weight layout rather than from a missing API.
 
-- Introduce a dedicated onboarding route (`/domains/[domainId]/setup`).
-  Rationale: Overloading the persistent `/domains/[domainId]` detail page to act as a single-threaded wizard hurts steady-state observability. Separating the first-time setup flow protects the main detail page for ongoing configuration management.
+- Keep the existing route structure and simplify the detail page in-place.
+  Rationale: `/domains`, `/domains/new`, and `/domains/[domainId]` already map cleanly to list, create, and detail stages. The problem is density and ordering inside those stages, not route structure. The detail page should adapt its layout based on domain state -- showing a setup-oriented view when setup is incomplete and a steady-state dashboard view once first proof succeeds.
 
-- Map backend states explicitly rather than masking them in display logic.
-  Rationale: If the UI unifies states too heavily and masks backend complexity, debugging becomes impossible (e.g., UI says "Ready" but backend is stuck). Explicit mapping prevents state desync.
+- Make the domain detail page single-threaded on first load when setup is incomplete.
+  Rationale: the user should first see current status, the active blocker, and the next step. Policy controls, logs, and analytics should remain available but visually secondary. Once setup completes, the page shifts to a balanced dashboard layout.
 
-- Hide demo-assisted and verification-state shortcuts behind an admin flag or `/admin` route.
-  Rationale: Keeping demo tools in the user-facing UI (even if secondary) adds unnecessary complexity and risks confusing real users.
+- Map backend states explicitly through a shared display helper rather than masking them in scattered display logic.
+  Rationale: DomainStatus, SetupStage, OriginStatus, and dnsStatus are independent fields that must be composed into a single user-facing narrative. This composition is a data modeling problem, not just a display problem. A dedicated helper function should derive the current step, active blocker, and next action from the full state tuple and be tested independently of the UI.
+
+- Hide demo-assisted and verification-state shortcuts behind an environment variable or feature flag (e.g., `NEXT_PUBLIC_DEMO_MODE`).
+  Rationale: Keeping demo tools in the user-facing UI adds unnecessary complexity. An environment variable is the simplest gating mechanism that doesn't require auth/role infrastructure.
 
 - Use progressive disclosure instead of deletion for technical detail.
   Rationale: the project still needs demo credibility and reviewer depth. Advanced evidence and demo-specific affordances should be secondary, not removed.
@@ -116,6 +121,40 @@ The result is a workspace that is technically rich but cognitively noisy. The pr
 
 > *This illustrates the intended approach and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce.*
 
+### Setup Interaction Model
+
+The detail page uses a **linear progress model** when setup is incomplete:
+
+- The active blocker is shown as the current step with its action CTA prominent.
+- Completed steps collapse to single-line summaries above the active step (e.g., "Origin configured" with a checkmark).
+- Future steps are listed but visually muted (gray text, no interactive controls) so the user sees the full journey without being overwhelmed.
+- The user cannot skip ahead but can revisit completed steps by expanding them inline.
+- Once all setup steps complete (first proof succeeds), the page transitions to a balanced steady-state dashboard layout where setup, proof, logs, and analytics share equal weight.
+
+### Progressive Disclosure Patterns
+
+Use two consistent patterns for secondary content throughout the onboarding flow:
+
+- **Inline accordion** for contextual detail that belongs near its parent (DNS records, log entries, advanced config fields, operator notes). Accordions expand in-place, are keyboard-operable (Enter/Space to toggle), and announce expanded/collapsed state via `aria-expanded`.
+- **Below-the-fold section** for full-surface views that are important but not part of the active setup step (analytics dashboard, policy revision history). These remain on the same page but are positioned after the primary setup/proof content.
+
+Do not use slide-over panels or modals for progressive disclosure in the onboarding flow. Keep all content on-page to avoid hiding state behind navigation.
+
+### Return-User Behavior
+
+When a user returns to `/domains/[domainId]` with an incomplete setup:
+
+- The detail page detects the current `setupStage` from backend state and renders the linear progress view with the appropriate step active.
+- No redirect is needed -- the detail page adapts its layout based on domain state.
+- A persistent banner at the top shows "Setup in progress -- N of M steps complete" with the next action CTA.
+
+When setup is complete (first proof has succeeded):
+
+- The detail page renders the steady-state dashboard layout.
+- A one-time "Setup complete" success banner appears on the first visit after completion, then does not reappear.
+
+### Flow Diagram
+
 ```mermaid
 flowchart TD
   A[Domains list] --> B[Create site form]
@@ -132,13 +171,36 @@ flowchart TD
 
 ## Implementation Units
 
-- [ ] **Unit 0: Define unified user-facing state vocabulary**
+- [ ] **Unit 0: Define unified user-facing state vocabulary and blocker precedence**
 
-**Goal:** Establish the ubiquitous language for states *before* rebuilding any UI components.
+**Goal:** Establish the ubiquitous language for states and the blocker precedence logic *before* rebuilding any UI components.
 
 **Requirements:** R2
+
 **Dependencies:** None
-**Approach:** Define the exact mapping from internal backend states (`services/shared/src/types.ts`) to the new unified user-facing labels to ensure UI implementation in subsequent units is consistent.
+
+**Files:**
+- Create: `lib/demo/state-display-map.ts`
+- Create: `tests/demo/state-display-map.test.ts`
+- Reference: `services/shared/src/types.ts`
+
+**Approach:**
+- Create a shared display helper (`lib/demo/state-display-map.ts`) that maps every combination of `SetupStage`, `OriginStatus`, `dnsStatus`, and `DomainStatus` to a single user-facing label, a short description, and a next-action string.
+- Define the blocker precedence hierarchy explicitly. When multiple backend conditions are pending simultaneously, the following order determines which blocker is surfaced as the dominant next action:
+  1. Origin validation failed (`originStatus === "failed"`) -- user must fix the origin before anything else can proceed.
+  2. Origin pending (`originStatus === "pending"` and `setupStage === "created"`) -- user must configure an origin URL.
+  3. DNS pending (`dnsStatus === "pending"` and `setupStage === "dns-pending"`) -- user must add DNS records.
+  4. DNS verifying (`setupStage === "verifying"`) -- system is checking DNS; user waits.
+  5. Ready for first proof (`setupStage === "ready"` and `status === "ready"`) -- user should send a proof request.
+- Export a `deriveOnboardingState(domain: DomainRecord)` function that returns `{ userLabel, description, nextAction, blockerPriority }` and is testable independently of UI components.
+- Unit 0 produces the *artifact*. Units 1-3 consume it during their modifications. Unit 4 performs a cross-cutting audit to catch any remaining inconsistencies.
+
+**Test scenarios:**
+- Every `SetupStage` value has a defined user-facing label in the mapping.
+- Every `OriginStatus` value has a defined user-facing label.
+- Every `dnsStatus` value has a defined user-facing label.
+- The `deriveOnboardingState` function returns the correct blocker when multiple conditions are pending simultaneously (e.g., origin failed + DNS pending → surfaces origin failure).
+- No raw backend enum value leaks through to user-facing output.
 
 - [ ] **Unit 1: Simplify entry points and first-step messaging**
 
@@ -146,7 +208,7 @@ flowchart TD
 
 **Requirements:** R1, R2, R5
 
-**Dependencies:** None
+**Dependencies:** Unit 0
 
 **Files:**
 - Modify: `app/domains/page.tsx`
@@ -171,6 +233,8 @@ flowchart TD
 - Happy path: the create form shows only the minimum inputs needed for the standard first-success setup path.
 - Edge case: secondary/advanced onboarding options remain reachable without dominating the default form.
 - Error path: failed site creation still surfaces a clear error without reintroducing extra explanatory clutter.
+- Empty state: `/domains` with zero domains shows a single onboarding CTA ("Create your first site") instead of an empty table.
+- Loading state: the create form disables the submit button and shows inline progress text ("Creating site...") while the POST is in-flight.
 - Integration: creating a site still routes the user into the domain detail workspace for the newly created domain.
 
 **Verification:**
@@ -180,9 +244,9 @@ flowchart TD
 
 **Goal:** Turn the zone detail page into a guided setup workspace with a dominant current step, blocker, and next action.
 
-**Requirements:** R1, R2, R3, R5
+**Requirements:** R1, R2, R3, R5, R6, R7
 
-**Dependencies:** Unit 1
+**Dependencies:** Unit 0, Unit 1
 
 **Files:**
 - Modify: `app/domains/[domainId]/page.tsx`
@@ -199,7 +263,7 @@ flowchart TD
 - Convert the current state timeline from a glossary-style explainer into a progress-oriented companion or secondary detail.
 - Split the current overloaded config surface into clearer sub-sections or smaller cards: current status, editable setup, DNS verification, and advanced detail. Use explicit interaction patterns for secondary content (e.g., accordions for advanced DNS settings) instead of vague "visual demotion."
 - Include explicit loading states for async operations (e.g., skeleton loaders during DNS/origin validation) and empty states for the domains list.
-- Keep raw DNS records and operator-oriented detail present, but behind clear interactions like a "Show Advanced" toggle or a slide-over panel.
+- Keep raw DNS records and operator-oriented detail present, but behind inline accordions (e.g., a "Show Advanced" toggle that expands in-place).
 
 **Patterns to follow:**
 - Preserve the current route shell and data-loading pattern in `app/domains/[domainId]/page.tsx`.
@@ -211,6 +275,8 @@ flowchart TD
 - Edge case: a ready domain still exposes proof and policy controls without duplicating contradictory status messaging.
 - Error path: failed origin validation or blocked DNS state remains visible and actionable after the layout simplification.
 - Integration: the top-level detail layout still renders domain summary, setup controls, and evidence in the intended sequence.
+- Accessibility: keyboard Tab/Shift-Tab cycles through setup steps and action buttons in logical order; focus moves to the newly revealed blocker when the active step changes.
+- Responsive: the detail page stacks to single-column on viewports below 768px with the active blocker and next-action CTA persisting near the top.
 
 **Verification:**
 - The domain detail page reads like a guided flow instead of a toolbox, and the first required action is visually obvious on first load.
@@ -219,7 +285,7 @@ flowchart TD
 
 **Goal:** Preserve the evidence story while making proof the first-success moment and logs/analytics the secondary confirmation layers.
 
-**Requirements:** R3, R4
+**Requirements:** R3, R4, R6
 
 **Dependencies:** Unit 2
 
@@ -234,7 +300,7 @@ flowchart TD
 **Approach:**
 - Make request proof the first evidence surface the user encounters once setup is ready enough to test.
 - Define explicit failure paths: if proof fails, automatically elevate error logs directly to the primary view instead of burying them in a drill-down.
-- Demote edge logs and API logs into specific UI containers (e.g., a "View Logs" slide-over panel or accordion) behind proof instead of equal-first tabs when proof succeeds.
+- Demote edge logs and API logs into inline accordions behind proof instead of equal-first tabs when proof succeeds.
 - Keep analytics visible as confirmation, but place it below the fold or inside an explicitly secondary "Metrics" section when the user is still seeking first success.
 
 **Patterns to follow:**
@@ -246,6 +312,9 @@ flowchart TD
 - Happy path: after proof exists, logs remain accessible as explanatory detail for the same request.
 - Edge case: a pending domain still shows blocked-proof messaging honestly without suggesting the site is live.
 - Error path: request failure messaging remains clear and localized to the proof surface.
+- Loading state: while a proof request is in-flight, the "Send Proof" button is disabled with inline progress text ("Sending request...") and the proof result area shows a skeleton loader.
+- Empty state: before any proof has been sent, the proof panel shows a single CTA ("Send your first proof request") with a brief explanation, not an empty results table.
+- Accessibility: accordion/disclosure toggles for logs and analytics sections are keyboard-operable and announce expanded/collapsed state to screen readers.
 - Integration: proof remains the immediate truth even when analytics freshness is `updating` or `degraded`.
 
 **Verification:**
