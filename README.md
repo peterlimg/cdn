@@ -1,21 +1,33 @@
-# Northstar CDN
+<div align="center">
+  <h1>Northstar CDN</h1>
+  <p><strong>CDN control plane and edge runtime built with Rust, Go, and TypeScript.</strong></p>
+  <p>
+    Domain onboarding, DNS verification flow, origin health checks, cache policy revisions,
+    edge request evaluation, WAF behavior, quota enforcement, analytics, logs, request proofs,
+    and multi-edge deployment topology.
+  </p>
+</div>
 
-Northstar CDN is a CDN control plane and edge runtime built with Rust, Go, and TypeScript.
+<div align="center">
+  <a href="docs/demo/demo-script.md"><strong>Demo Script</strong></a> ·
+  <a href="docs/demo/service-map.md"><strong>Service Map</strong></a> ·
+  <a href="docs/demo/runbook.md"><strong>Runbook</strong></a> ·
+  <a href="docs/demo/logs-and-evidence-guide.md"><strong>Logs & Evidence</strong></a> ·
+  <a href="https://www.loom.com/share/10feee78bdef4a4499c15a8e79b2aefa"><strong>Watch Video</strong></a>
+</div>
 
-It includes:
-- domain onboarding
-- DNS verification flow
-- origin configuration and health checks
-- cache policy publishing and revision handling
-- edge request evaluation
-- request outcomes such as BYPASS, MISS, and HIT
-- basic WAF behavior
-- rate limiting
-- quota enforcement
-- analytics, logs, and request proofs
-- multi-edge deployment topology
+<br/>
 
-The system is backed by PostgreSQL, Redis, ClickHouse, Nginx, and Docker Compose.
+<p align="center">
+  <img src="https://img.shields.io/badge/Rust-Edge_Runtime-black?logo=rust" alt="Rust edge runtime" />
+  <img src="https://img.shields.io/badge/Go-Control_Plane-00ADD8?logo=go&logoColor=white" alt="Go control plane" />
+  <img src="https://img.shields.io/badge/TypeScript-Next.js_UI-3178C6?logo=typescript&logoColor=white" alt="TypeScript Next.js UI" />
+  <img src="https://img.shields.io/badge/PostgreSQL-Durable_State-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL durable state" />
+  <img src="https://img.shields.io/badge/Redis-Rate_Limits_&_Counters-DC382D?logo=redis&logoColor=white" alt="Redis counters and rate limits" />
+  <img src="https://img.shields.io/badge/ClickHouse-Analytics-FFCC01?logo=clickhouse&logoColor=black" alt="ClickHouse analytics" />
+  <img src="https://img.shields.io/badge/Docker_Compose-Local_Stack-2496ED?logo=docker&logoColor=white" alt="Docker Compose local stack" />
+  <img src="https://img.shields.io/badge/Edge_Nodes-3_Regions-6F42C1" alt="3 edge nodes" />
+</p>
 
 <p align="center">
   <a href="https://www.loom.com/share/10feee78bdef4a4499c15a8e79b2aefa">
@@ -24,10 +36,8 @@ The system is backed by PostgreSQL, Redis, ClickHouse, Nginx, and Docker Compose
 </p>
 
 <p align="center">
-  <a href="https://www.loom.com/share/10feee78bdef4a4499c15a8e79b2aefa">Watch the walkthrough video</a>
+  <a href="https://www.loom.com/share/10feee78bdef4a4499c15a8e79b2aefa"><strong>Watch the walkthrough video</strong></a>
 </p>
-
-## Overview
 
 Northstar CDN is a working CDN platform prototype with clear separation between the control plane, edge runtime, analytics pipeline, and operator dashboard.
 
@@ -40,7 +50,7 @@ The platform combines:
 
 It is designed around core CDN workflows: onboarding domains, validating origin setup, publishing cache behavior, evaluating requests at the edge, enforcing limits, and exposing evidence through logs, analytics, and request proofs.
 
-## Current Capabilities
+## ✨ Current Capabilities
 
 - Sign in to the dashboard
 - Create and manage domains / zones
@@ -55,7 +65,7 @@ It is designed around core CDN workflows: onboarding domains, validating origin 
 - Review analytics, structured logs, and request proof events
 - Simulate multi-edge rollout across 3 edge nodes
 
-## Architecture
+## 🏗 Architecture
 
 Three-service runtime:
 
@@ -109,7 +119,7 @@ ClickHouse
 Nginx
 - ingress / proxy layer
 
-## Multi-Edge Topology
+## 🌍 Multi-Edge Topology
 
 The local stack includes 3 named edge nodes:
 - US East
@@ -118,7 +128,7 @@ The local stack includes 3 named edge nodes:
 
 This allows the system to demonstrate early regional rollout patterns and edge-targeted behavior across multiple runtimes.
 
-## Request Outcomes
+## 🚦 Request Outcomes
 
 Northstar CDN currently surfaces request outcomes including:
 - `BYPASS`
@@ -132,7 +142,22 @@ Northstar CDN currently surfaces request outcomes including:
 
 These outcomes are reflected through proof events, logs, and analytics.
 
-## Scope Boundary
+## 🎬 Demo Flow
+
+A typical end-to-end flow looks like this:
+
+1. Create a domain
+2. Configure the origin
+3. Verify setup state
+4. Publish a cache policy revision
+5. Send traffic through the edge runtime
+6. Observe MISS on the first request and HIT on repeated requests
+7. Review proofs, logs, and analytics
+8. Continue traffic until quota is reached and confirm blocking behavior
+
+For a scripted walkthrough, see `docs/demo/demo-script.md`.
+
+## 🧭 Scope Boundary
 
 Northstar CDN is a working CDN prototype with a defined scope. It currently focuses on core CDN workflows and public traffic delivery patterns.
 
@@ -152,22 +177,7 @@ Not safely supported yet:
 
 Current support is strongest around core CDN behavior, request handling, and operator visibility rather than full authenticated application delivery.
 
-## Demo Flow
-
-A typical end-to-end flow looks like this:
-
-1. Create a domain
-2. Configure the origin
-3. Verify setup state
-4. Publish a cache policy revision
-5. Send traffic through the edge runtime
-6. Observe MISS on the first request and HIT on repeated requests
-7. Review proofs, logs, and analytics
-8. Continue traffic until quota is reached and confirm blocking behavior
-
-For a scripted walkthrough, see `docs/demo/demo-script.md`.
-
-## Tech Stack
+## 🛠 Tech Stack
 
 - Rust
 - Go
@@ -178,26 +188,27 @@ For a scripted walkthrough, see `docs/demo/demo-script.md`.
 - ClickHouse
 - Docker Compose
 
-## Prerequisites
+## 📦 Quick Start (Docker Compose)
 
+Prerequisites:
 - Node.js 22+
 - Go 1.22+
 - Rust (stable)
 - Docker and Docker Compose
 
-## Quick Start (Docker Compose)
+Start the full local stack:
 
 ```bash
 make up
 ```
 
-This starts the full local stack. Open `http://localhost:8080`.
+Open `http://localhost:8080`.
 
 Default tokens are set in the Makefile:
 - `DEMO_RESET_TOKEN=***`
-- `INTERNAL_API_TOKEN=demo-i...oken`
+- `INTERNAL_API_TOKEN=***`
 
-## Local Development
+## 💻 Local Development
 
 Start infrastructure dependencies:
 
@@ -220,7 +231,7 @@ npm run dev:api    # Go API on :4001
 npm run dev:edge   # Rust edge on :4002
 ```
 
-## Environment Variables
+## ⚙️ Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -235,7 +246,7 @@ npm run dev:edge   # Rust edge on :4002
 | `RUST_EDGE_URL` | `http://127.0.0.1:4002` | Generic Rust edge base URL. Through Docker this points at Nginx's shared `/edge` path, while node-specific verification routes are exposed under `/edge-nodes/<node-id>`. |
 | `SESSION_SECRET` | `northstar-demo-session-secret` | HMAC key for session cookies |
 
-## Build
+## 🔨 Build
 
 ```bash
 npm run build       # Next.js production build
@@ -244,7 +255,7 @@ make build-rust     # Rust binary
 make build          # All Docker images
 ```
 
-## Testing
+## 🧪 Testing
 
 ```bash
 make test           # All tests
@@ -253,7 +264,7 @@ make test-go        # Go tests
 make test-rust      # Rust tests
 ```
 
-## Project Structure
+## 📁 Project Structure
 
 ```text
 app/                  Next.js pages and API route proxies
@@ -272,7 +283,7 @@ tests/demo/           Vitest test suite
 docs/demo/            Demo documentation and runbooks
 ```
 
-## API Overview
+## 🔌 API Overview
 
 ### Go API (control plane)
 
@@ -296,7 +307,7 @@ docs/demo/            Demo documentation and runbooks
 | GET | `/proxy/{path}` | Proxy public origin content with edge headers |
 | POST | `/reset` | Clear file-based cache |
 
-## Documentation
+## 📚 Documentation
 
 See `docs/demo/` for runtime guides and reference docs:
 
