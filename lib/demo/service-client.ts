@@ -2,6 +2,7 @@ import { getGoApiUrl } from "./service-endpoints"
 import type {
   DashboardSnapshot,
   DomainRecord,
+  EdgeNode,
   ServiceLog,
 } from "../../services/shared/src/types"
 
@@ -29,6 +30,11 @@ export async function fetchDomains(): Promise<DomainRecord[]> {
   return parseJson<DomainRecord[]>(response)
 }
 
+export async function fetchEdgeNodes(): Promise<EdgeNode[]> {
+	const response = await fetch(`${getGoApiUrl()}/edge-nodes`, { cache: "no-store" })
+	return parseJson<EdgeNode[]>(response)
+}
+
 export async function fetchDomain(domainId: string): Promise<DomainRecord | null> {
   const response = await fetch(`${getGoApiUrl()}/domains/${domainId}`, { cache: "no-store" })
 
@@ -46,6 +52,8 @@ export async function createDomain(input: {
   origin?: string
   healthCheckPath?: string
   setupPath?: "existing-origin" | "network-static" | "demo-static"
+  edgePlacementMode?: "all-eligible" | "subset"
+  edgeSelectedNodeIds?: string[]
 }) {
   const response = await fetch(`${getGoApiUrl()}/domains`, {
     method: "POST",

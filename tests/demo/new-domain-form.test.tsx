@@ -3,6 +3,11 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NewDomainForm } from "../../components/demo/new-domain-form"
 
+const edgeNodes = [
+  { id: "edge-us-east", label: "US East", region: "us-east", verificationPath: "/edge-nodes/edge-us-east" },
+  { id: "edge-eu-west", label: "EU West", region: "eu-west", verificationPath: "/edge-nodes/edge-eu-west" },
+] as const
+
 const push = vi.fn()
 const refresh = vi.fn()
 let searchMode = "ready"
@@ -28,9 +33,10 @@ describe("new domain form", () => {
   })
 
   it("renders a simplified pull-zone style form", () => {
-    render(<NewDomainForm />)
+    render(<NewDomainForm edgeNodes={[...edgeNodes]} />)
 
     expect(screen.getByText("Create a new pull zone")).toBeInTheDocument()
+    expect(screen.getByText("Deploying to all 2 eligible edge nodes")).toBeInTheDocument()
     expect(screen.getByLabelText("Zone name")).toBeInTheDocument()
     expect(screen.getByLabelText("Hostname")).toBeInTheDocument()
     expect(screen.getByLabelText("Origin URL")).toBeInTheDocument()
@@ -40,21 +46,41 @@ describe("new domain form", () => {
   })
 
   it("uses the ready hostname by default", () => {
-    render(<NewDomainForm />)
+    render(<NewDomainForm edgeNodes={[...edgeNodes]} />)
 
     expect(screen.getByDisplayValue("ready-site.northstarcdn.test")).toBeInTheDocument()
   })
 
-	it("keeps the public-origin defaults in the simplified form", () => {
-		render(<NewDomainForm />)
+  it("keeps the public-origin defaults in the simplified form", () => {
+    render(<NewDomainForm edgeNodes={[...edgeNodes]} />)
 
-		expect(screen.getByDisplayValue("https://static.example.com")).toBeInTheDocument()
-		expect(screen.getByDisplayValue("/")).toBeInTheDocument()
-	})
+    expect(screen.getByDisplayValue("https://static.example.com")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("/")).toBeInTheDocument()
+  })
 
   it("keeps the existing-origin health check default focused on public sites", () => {
-    render(<NewDomainForm />)
+    render(<NewDomainForm edgeNodes={[...edgeNodes]} />)
 
     expect(screen.getByDisplayValue("/")).toBeInTheDocument()
+  })
+
+  it("shows subset selection only after opening advanced edge placement options", () => {
+    render(<NewDomainForm edgeNodes={[...edgeNodes]} />)
+
+    expect(screen.queryByLabelText(/Only selected edge nodes/i)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText("Choose specific edge nodes"))
+    expect(screen.getByLabelText(/Only selected edge nodes/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText(/Only selected edge nodes/i))
+    expect(screen.getByLabelText(/US East/i)).toBeInTheDocument()
+  })
+
+  it("updates the placement summary when a subset is selected", () => {
+    render(<NewDomainForm edgeNodes={[...edgeNodes]} />)
+
+    fireEvent.click(screen.getByText("Choose specific edge nodes"))
+    fireEvent.click(screen.getByLabelText(/Only selected edge nodes/i))
+    fireEvent.click(screen.getByLabelText(/US East/i))
+
+    expect(screen.getByText("Deploying to 1 selected edge node")).toBeInTheDocument()
   })
 })

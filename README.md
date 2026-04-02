@@ -87,7 +87,7 @@ npm run dev:edge   # Rust edge on :4002
 | `CLICKHOUSE_USER` | `default` | ClickHouse HTTP username |
 | `CLICKHOUSE_PASSWORD` | `demo-clickhouse` | ClickHouse HTTP password for local compose |
 | `GO_API_URL` | `http://127.0.0.1:4001` | Go API base URL |
-| `RUST_EDGE_URL` | `http://127.0.0.1:4002` | Rust edge base URL |
+| `RUST_EDGE_URL` | `http://127.0.0.1:4002` | Generic Rust edge base URL. Through Docker this points at Nginx's shared `/edge` path, while node-specific verification routes are exposed under `/edge-nodes/<node-id>`. |
 | `SESSION_SECRET` | `northstar-demo-session-secret` | HMAC key for session cookies |
 
 ## Build

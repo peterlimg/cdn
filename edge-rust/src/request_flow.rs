@@ -26,7 +26,15 @@ pub struct DomainRecord {
     pub active_revision_id: String,
     #[serde(rename = "appliedRevisionId")]
     pub applied_revision_id: String,
+    #[serde(rename = "edgePlacement")]
+    pub edge_placement: Option<EdgePlacement>,
     pub revisions: Vec<PolicyRevision>,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct EdgePlacement {
+    #[serde(rename = "targetNodeIds")]
+    pub target_node_ids: Vec<String>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -47,6 +55,8 @@ pub struct RequestBody {
     #[serde(default)]
     pub hostname: Option<String>,
     pub path: Option<String>,
+    #[serde(rename = "targetNodeId")]
+    pub target_node_id: Option<String>,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -73,6 +83,16 @@ pub struct RequestProof {
     #[serde(rename = "quotaLimitBytes")]
     pub quota_limit_bytes: i32,
     pub message: String,
+    #[serde(rename = "requestScope", skip_serializing_if = "Option::is_none")]
+    pub request_scope: Option<String>,
+    #[serde(rename = "targetNodeId", skip_serializing_if = "Option::is_none")]
+    pub target_node_id: Option<String>,
+    #[serde(rename = "servedByNodeId", skip_serializing_if = "Option::is_none")]
+    pub served_by_node_id: Option<String>,
+    #[serde(rename = "servedByNodeLabel", skip_serializing_if = "Option::is_none")]
+    pub served_by_node_label: Option<String>,
+    #[serde(rename = "servedByRegion", skip_serializing_if = "Option::is_none")]
+    pub served_by_region: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -92,6 +112,25 @@ pub struct ServiceLog {
     pub outcome: String,
     pub message: String,
     pub timestamp: String,
+    #[serde(rename = "nodeId", skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    #[serde(rename = "nodeLabel", skip_serializing_if = "Option::is_none")]
+    pub node_label: Option<String>,
+    #[serde(rename = "nodeRegion", skip_serializing_if = "Option::is_none")]
+    pub node_region: Option<String>,
+}
+
+#[derive(Serialize)]
+struct EdgeApplyPayload {
+    #[serde(rename = "domainId")]
+    domain_id: String,
+    #[serde(rename = "nodeId")]
+    node_id: String,
+    #[serde(rename = "revisionId")]
+    revision_id: String,
+    status: String,
+    message: String,
+    timestamp: String,
 }
 
 pub struct ServedResponse {
@@ -169,12 +208,35 @@ pub async fn execute_request(client: &Client, request: RequestBody, ingress_requ
         .domain
         .revisions
         .iter()
-        .find(|item| item.id == context.domain.applied_revision_id)
-        .ok_or_else(|| RequestError::Upstream("applied revision not found".to_string()))?
+        .find(|item| item.id == context.domain.active_revision_id)
+        .ok_or_else(|| RequestError::Upstream("active revision not found".to_string()))?
         .clone();
+
+    if let Some(target_node_id) = request.target_node_id.as_ref() {
+        if target_node_id != &runtime.node_id {
+            return Err(RequestError::NotFound("target edge node is not available on this runtime".to_string()));
+        }
+    }
+
+    if let Some(placement) = context.domain.edge_placement.as_ref() {
+        if !placement.target_node_ids.iter().any(|node_id| node_id == &runtime.node_id) {
+            return Err(RequestError::NotFound("domain is not targeted to this edge node".to_string()));
+        }
+    }
 
     let timestamp = chrono_like_timestamp();
     let path = request.path.unwrap_or_else(|| "/assets/demo.css".to_string());
+
+    acknowledge_apply(
+        client,
+        &runtime,
+        &context.domain.id,
+        &revision.id,
+        &timestamp,
+        &format!("{} applied revision {}", runtime.node_label, revision.id),
+    )
+    .await
+    .map_err(RequestError::Upstream)?;
 
     let (cache_status, disposition, bytes_served, quota_used, message, response): (String, String, i32, i32, String, Option<ServedResponse>) = if context.domain.status != "ready" {
         (
@@ -303,6 +365,11 @@ pub async fn execute_request(client: &Client, request: RequestBody, ingress_requ
         quota_used_bytes: quota_used,
         quota_limit_bytes: context.quota_limit_bytes,
         message: message.clone(),
+        request_scope: Some(if request.target_node_id.is_some() { "node-targeted".to_string() } else { "generic".to_string() }),
+        target_node_id: request.target_node_id.clone(),
+        served_by_node_id: Some(runtime.node_id.clone()),
+        served_by_node_label: Some(runtime.node_label.clone()),
+        served_by_region: Some(runtime.node_region.clone()),
     };
 
     let log = ServiceLog {
@@ -317,6 +384,9 @@ pub async fn execute_request(client: &Client, request: RequestBody, ingress_requ
         outcome: cache_status.clone(),
         message: format!("Rust edge evaluated request with outcome {cache_status}"),
         timestamp,
+        node_id: Some(runtime.node_id.clone()),
+        node_label: Some(runtime.node_label.clone()),
+        node_region: Some(runtime.node_region.clone()),
     };
 
     client
@@ -330,6 +400,36 @@ pub async fn execute_request(client: &Client, request: RequestBody, ingress_requ
         .map_err(|error| map_status_error(error, "edge ingest failed"))?;
 
     Ok(EvaluatedRequest { proof, response })
+}
+
+async fn acknowledge_apply(
+    client: &Client,
+    runtime: &config::RuntimeConfig,
+    domain_id: &str,
+    revision_id: &str,
+    timestamp: &str,
+    message: &str,
+) -> Result<(), String> {
+    client
+        .post(format!("{}/internal/edge-apply", runtime.go_api_url))
+        .header("X-Internal-Token", runtime.internal_api_token.clone().unwrap_or_default())
+        .json(&EdgeApplyPayload {
+            domain_id: domain_id.to_string(),
+            node_id: runtime.node_id.clone(),
+            revision_id: revision_id.to_string(),
+            status: "applied".to_string(),
+            message: message.to_string(),
+            timestamp: timestamp.to_string(),
+        })
+        .send()
+        .await
+        .map_err(|error| error.to_string())?
+        .error_for_status()
+        .map_err(|error| match error.status() {
+            Some(status) => format!("edge apply ack failed with {status}: {error}"),
+            None => format!("edge apply ack failed: {error}"),
+        })?;
+    Ok(())
 }
 
 fn origin_error_outcome(error: proxy::OriginFetchError, quota_used_bytes: i32) -> (String, String, i32, i32, String, Option<ServedResponse>) {

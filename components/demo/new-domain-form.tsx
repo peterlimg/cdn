@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import type { SetupPath } from "../../services/shared/src/types"
+import type { EdgeNode, SetupPath } from "../../services/shared/src/types"
 
 const defaultHostnames = {
   ready: "ready-site.northstarcdn.test",
@@ -16,12 +16,12 @@ const defaultOrigins: Record<SetupPath, string> = {
 }
 
 const defaultHealthCheckPaths: Record<SetupPath, string> = {
-	"existing-origin": "/",
-	"network-static": "/assets/demo.css",
-	"demo-static": "/assets/demo.css",
+  "existing-origin": "/",
+  "network-static": "/assets/demo.css",
+  "demo-static": "/assets/demo.css",
 }
 
-export function NewDomainForm() {
+export function NewDomainForm({ edgeNodes }: { edgeNodes: EdgeNode[] }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialMode = searchParams.get("mode") === "pending" ? "pending" : "ready"
@@ -33,9 +33,29 @@ export function NewDomainForm() {
   const [hostname, setHostname] = useState<string>(defaultHostnames[initialMode])
   const [origin, setOrigin] = useState<string>(defaultOrigins[initialSetupPath])
   const [healthCheckPath, setHealthCheckPath] = useState<string>(defaultHealthCheckPaths[initialSetupPath])
-  const [hostnameDirty, setHostnameDirty] = useState(false)
+  const [edgePlacementMode, setEdgePlacementMode] = useState<"all-eligible" | "subset">("all-eligible")
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
+  const [showAdvancedNodes, setShowAdvancedNodes] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  const placementSummary = edgePlacementMode === "subset"
+    ? `Deploying to ${selectedNodeIds.length || 0} selected edge node${selectedNodeIds.length === 1 ? "" : "s"}`
+    : `Deploying to all ${edgeNodes.length} eligible edge node${edgeNodes.length === 1 ? "" : "s"}`
+
+  function toggleNode(nodeId: string) {
+    setSelectedNodeIds((current) => current.includes(nodeId)
+      ? current.filter((id) => id !== nodeId)
+      : [...current, nodeId])
+  }
+
+  function setPlacementMode(mode: "all-eligible" | "subset") {
+    setEdgePlacementMode(mode)
+    if (mode === "all-eligible") {
+      setSelectedNodeIds([])
+    }
+  }
+
   async function createZone() {
     setError(null)
     const response = await fetch("/api/reseed", {
@@ -43,7 +63,16 @@ export function NewDomainForm() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ hostname, mode, projectName, origin, healthCheckPath, setupPath }),
+      body: JSON.stringify({
+        hostname,
+        mode,
+        projectName,
+        origin,
+        healthCheckPath,
+        setupPath,
+        edgePlacementMode,
+        edgeSelectedNodeIds: edgePlacementMode === "subset" ? selectedNodeIds : [],
+      }),
     })
 
     const payload = await response.json().catch(() => ({ error: "failed to create zone" }))
@@ -67,9 +96,63 @@ export function NewDomainForm() {
           </p>
         </div>
 
-        <div className="note create-zone-note">
-          Start with one hostname and one origin. After creation, the zone detail page becomes the place to finish setup, send proof, and inspect logs.
+        <div className="note stack create-zone-note" style={{ gap: 8 }}>
+          <div>
+            <strong>{placementSummary}</strong>
+          </div>
+          <div className="small muted">
+            {edgeNodes.map((node) => `${node.label} (${node.region})`).join(", ")}
+          </div>
+          <div>
+            <button
+              className="button-secondary"
+              onClick={() => setShowAdvancedNodes((current) => !current)}
+              type="button"
+            >
+              {showAdvancedNodes ? "Hide edge placement options" : "Choose specific edge nodes"}
+            </button>
+          </div>
         </div>
+
+        {showAdvancedNodes ? (
+          <div className="field">
+            <label>Edge placement</label>
+            <div className="stack small muted" style={{ gap: 8 }}>
+              <label>
+                <input
+                  checked={edgePlacementMode === "all-eligible"}
+                  name="edgePlacementMode"
+                  onChange={() => setPlacementMode("all-eligible")}
+                  type="radio"
+                />{" "}
+                All eligible edge nodes
+              </label>
+              <label>
+                <input
+                  checked={edgePlacementMode === "subset"}
+                  name="edgePlacementMode"
+                  onChange={() => setPlacementMode("subset")}
+                  type="radio"
+                />{" "}
+                Only selected edge nodes
+              </label>
+            </div>
+            {edgePlacementMode === "subset" ? (
+              <div className="stack" style={{ gap: 8, marginTop: 12 }}>
+                {edgeNodes.map((node) => (
+                  <label className="small muted" key={node.id}>
+                    <input
+                      checked={selectedNodeIds.includes(node.id)}
+                      onChange={() => toggleNode(node.id)}
+                      type="checkbox"
+                    />{" "}
+                    {node.label} ({node.region})
+                  </label>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="field">
           <label htmlFor="projectName">Zone name</label>
@@ -90,7 +173,6 @@ export function NewDomainForm() {
             id="hostname"
             onChange={(event) => {
               setHostname(event.target.value)
-              setHostnameDirty(true)
             }}
             placeholder="ready-site.northstarcdn.test"
             value={hostname}

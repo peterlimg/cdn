@@ -6,6 +6,7 @@ import { useState } from "react"
 import { AnalyticsPageShell } from "./analytics-page-shell"
 import { CachePolicyCard } from "./cache-policy-card"
 import { DomainConfigSections } from "./domain-config-sections"
+import { EdgeDeploymentCard } from "./edge-deployment-card"
 import { DomainOnboardingCard } from "./domain-onboarding-card"
 import { EvidenceTabs } from "./evidence-tabs"
 import { PolicyRevisionBanner } from "./policy-revision-banner"
@@ -43,16 +44,20 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
       <PolicyRevisionBanner
         activeRevisionId={domain.activeRevisionId}
         appliedRevisionId={domain.appliedRevisionId}
+        rollout={domain.edgeRollout}
       />
 
       <div className="grid zone-detail-hero-grid">
         <DomainOnboardingCard domain={domain} />
-        <CachePolicyCard
-          domainId={domain.id}
-          cacheEnabled={Boolean(activeRevision?.cacheEnabled)}
-          revisionLabel={activeRevision?.label ?? "Unknown revision"}
-          onChanged={refreshAfterPolicyChange}
-        />
+        <div className="stack">
+          <CachePolicyCard
+            domainId={domain.id}
+            cacheEnabled={Boolean(activeRevision?.cacheEnabled)}
+            revisionLabel={activeRevision?.label ?? "Unknown revision"}
+            onChanged={refreshAfterPolicyChange}
+          />
+          <EdgeDeploymentCard placement={domain.edgePlacement} rollout={domain.edgeRollout} />
+        </div>
       </div>
 
       <div className="grid zone-detail-main-grid">
@@ -78,6 +83,7 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
             domainId={domain.id}
             domainStatus={domain.status}
             routeHint={domain.routeHint || domain.healthCheckPath}
+            rollout={domain.edgeRollout}
             initialProofs={events}
             initialEdgeLogs={edgeLogs}
             initialApiLogs={apiLogs}

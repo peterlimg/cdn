@@ -8,6 +8,8 @@ type ReseedBody = {
   origin?: string
   healthCheckPath?: string
   setupPath?: "existing-origin" | "network-static" | "demo-static"
+  edgePlacementMode?: "all-eligible" | "subset"
+  edgeSelectedNodeIds?: string[]
 }
 
 const defaultHostnames = {
@@ -49,6 +51,8 @@ export async function POST(request: Request) {
       origin: body.origin,
       healthCheckPath: body.healthCheckPath,
       setupPath: body.setupPath,
+      edgePlacementMode: body.edgePlacementMode,
+      edgeSelectedNodeIds: body.edgeSelectedNodeIds,
     }),
     cache: "no-store",
   })

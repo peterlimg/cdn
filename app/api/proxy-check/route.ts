@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server"
-import { getRustEdgeUrl } from "../../../lib/demo/service-endpoints"
+import { getEdgeNodeUrl } from "../../../lib/demo/service-endpoints"
 
 export async function GET(request: Request) {
-  const rustEdgeUrl = getRustEdgeUrl()
   const url = new URL(request.url)
   const domainId = url.searchParams.get("domainId")
   const path = url.searchParams.get("path") ?? "/assets/demo.css"
+  const targetNodeId = url.searchParams.get("targetNodeId")
 
   if (!domainId) {
     return NextResponse.json({ error: "domainId is required" }, { status: 400 })
   }
 
-  const response = await fetch(`${rustEdgeUrl}/proxy${path}?domainId=${domainId}`, {
+  const response = await fetch(`${getEdgeNodeUrl(targetNodeId)}/proxy${path}?domainId=${domainId}`, {
     method: "GET",
     headers: {
       "X-Request-Id": request.headers.get("x-request-id") ?? crypto.randomUUID(),

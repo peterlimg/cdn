@@ -42,7 +42,7 @@ logs-api: ## Tail Go API logs
 	$(COMPOSE) logs -f api
 
 logs-edge: ## Tail Rust edge logs
-	$(COMPOSE) logs -f edge
+	$(COMPOSE) logs -f edge-us-east edge-eu-west edge-ap-south
 
 logs-ui: ## Tail UI logs
 	$(COMPOSE) logs -f ui
@@ -72,7 +72,9 @@ reset-data: ## Reset persisted demo data and cache directly
 	@$(COMPOSE) exec -T postgres psql -U postgres -d cdn_demo -c "TRUNCATE TABLE service_logs, request_events, control_domains RESTART IDENTITY;"
 	@$(COMPOSE) exec -T clickhouse clickhouse-client --query "TRUNCATE TABLE cdn_demo.request_events"
 	@$(COMPOSE) exec -T redis redis-cli FLUSHALL
-	@$(COMPOSE) exec -T edge wget -qO- --header='X-Internal-Token: $(INTERNAL_API_TOKEN)' --post-data='' http://127.0.0.1:4002/reset >/dev/null
+	@$(COMPOSE) exec -T edge-us-east wget -qO- --header='X-Internal-Token: $(INTERNAL_API_TOKEN)' --post-data='' http://127.0.0.1:4002/reset >/dev/null
+	@$(COMPOSE) exec -T edge-eu-west wget -qO- --header='X-Internal-Token: $(INTERNAL_API_TOKEN)' --post-data='' http://127.0.0.1:4003/reset >/dev/null
+	@$(COMPOSE) exec -T edge-ap-south wget -qO- --header='X-Internal-Token: $(INTERNAL_API_TOKEN)' --post-data='' http://127.0.0.1:4004/reset >/dev/null
 	@$(COMPOSE) start api ui >/dev/null
 	@echo "demo data reset"
 

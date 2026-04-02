@@ -29,6 +29,46 @@ export type CacheStatus =
 
 export type ServiceName = "edge" | "api"
 
+export type EdgePlacementMode = "all-eligible" | "subset"
+
+export type EdgeRolloutStatus = "pending" | "applied" | "failed"
+
+export type RequestScope = "generic" | "node-targeted"
+
+export type EdgeNode = {
+  id: string
+  label: string
+  region: string
+  verificationPath: string
+}
+
+export type EdgePlacement = {
+  mode: EdgePlacementMode
+  selectedNodeIds: string[]
+  targetNodeIds: string[]
+  summary: string
+}
+
+export type EdgeRolloutNode = {
+  nodeId: string
+  label: string
+  region: string
+  verificationPath: string
+  status: EdgeRolloutStatus
+  appliedRevisionId?: string
+  lastAckAt?: string
+  lastError?: string
+}
+
+export type EdgeRollout = {
+  status: "pending" | "partial" | "applied" | "failed"
+  targetNodeCount: number
+  pendingNodeCount: number
+  appliedNodeCount: number
+  failedNodeCount: number
+  nodes: EdgeRolloutNode[]
+}
+
 export type PolicyRevision = {
   id: string
   cacheEnabled: boolean
@@ -68,6 +108,8 @@ export type DomainRecord = {
   proxyMode?: "proxied" | "dns-only"
   routeHint?: string
   rateLimit?: number
+  edgePlacement?: EdgePlacement
+  edgeRollout?: EdgeRollout
 }
 
 export type RequestProof = {
@@ -84,6 +126,11 @@ export type RequestProof = {
   quotaUsedBytes: number
   quotaLimitBytes: number
   message: string
+  requestScope?: RequestScope
+  targetNodeId?: string
+  servedByNodeId?: string
+  servedByNodeLabel?: string
+  servedByRegion?: string
 }
 
 export type AnalyticsEvent = RequestProof
@@ -100,6 +147,9 @@ export type ServiceLog = {
   outcome: string
   message: string
   timestamp: string
+  nodeId?: string
+  nodeLabel?: string
+  nodeRegion?: string
 }
 
 export type AnalyticsSummary = {

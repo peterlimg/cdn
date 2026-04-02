@@ -30,6 +30,7 @@ type Store struct {
 	analytics          analyticsClient
 	analyticsFreshness string
 	analyticsFailure   string
+	edgeTopology       []EdgeNode
 	domains            map[string]DomainRecord
 	events             []RequestProof
 	logs               []ServiceLog
@@ -54,7 +55,14 @@ const (
 )
 
 func NewStore(client *db.Client, analytics analyticsClient) *Store {
-	store := &Store{db: client, analytics: analytics, analyticsFreshness: "live", analyticsFailure: analyticsFailureNone, domains: map[string]DomainRecord{}}
+	store := &Store{
+		db:                 client,
+		analytics:          analytics,
+		analyticsFreshness: "live",
+		analyticsFailure:   analyticsFailureNone,
+		edgeTopology:       copyEdgeTopology(defaultEdgeTopology()),
+		domains:            map[string]DomainRecord{},
+	}
 	store.loadPersistedState()
 	return store
 }
@@ -130,6 +138,171 @@ func buildDNSRecords(hostname string) []DNSRecord {
 		{Host: hostname, Type: "CNAME", Value: "edge.northstar-demo.internal", Purpose: "Proxy traffic through Rust edge", TTL: 60, Proxied: true},
 		{Host: "_verify." + hostname, Type: "TXT", Value: "northstar-demo-verification", Purpose: "Demo verification record", TTL: 60, Proxied: false},
 	}
+}
+
+func uniqueNodeIDs(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := map[string]struct{}{}
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		result = append(result, trimmed)
+	}
+	return result
+}
+
+func buildPlacementSummary(mode EdgePlacementMode, targetNodes []EdgeNode) string {
+	if len(targetNodes) == 0 {
+		return "No eligible edge nodes"
+	}
+	if mode == EdgePlacementSubset {
+		return fmt.Sprintf("Deploying to %d selected edge nodes", len(targetNodes))
+	}
+	return fmt.Sprintf("Deploying to all %d eligible edge nodes", len(targetNodes))
+}
+
+func rolloutSummary(nodes []EdgeRolloutNode) EdgeRollout {
+	rollout := EdgeRollout{Nodes: nodes, TargetNodeCount: len(nodes)}
+	for _, node := range nodes {
+		switch node.Status {
+		case EdgeRolloutApplied:
+			rollout.AppliedNodeCount++
+		case EdgeRolloutFailed:
+			rollout.FailedNodeCount++
+		default:
+			rollout.PendingNodeCount++
+		}
+	}
+	if rollout.TargetNodeCount == 0 {
+		rollout.Status = "pending"
+		return rollout
+	}
+	if rollout.FailedNodeCount == rollout.TargetNodeCount {
+		rollout.Status = "failed"
+		return rollout
+	}
+	if rollout.FailedNodeCount > 0 {
+		rollout.Status = "partial"
+		return rollout
+	}
+	if rollout.AppliedNodeCount == rollout.TargetNodeCount {
+		rollout.Status = "applied"
+		return rollout
+	}
+	if rollout.AppliedNodeCount > 0 {
+		rollout.Status = "partial"
+		return rollout
+	}
+	rollout.Status = "pending"
+	return rollout
+}
+
+func derivePlacement(topology []EdgeNode, placement EdgePlacement) EdgePlacement {
+	mode := placement.Mode
+	if mode == "" {
+		mode = EdgePlacementAllEligible
+	}
+	selected := uniqueNodeIDs(placement.SelectedNodeIDs)
+	targets := make([]EdgeNode, 0, len(topology))
+	targetIDs := make([]string, 0, len(topology))
+	selectedSet := map[string]struct{}{}
+	for _, value := range selected {
+		selectedSet[value] = struct{}{}
+	}
+	for _, node := range topology {
+		if mode == EdgePlacementSubset {
+			if _, ok := selectedSet[node.ID]; !ok {
+				continue
+			}
+		}
+		targets = append(targets, node)
+		targetIDs = append(targetIDs, node.ID)
+	}
+	return EdgePlacement{
+		Mode:            mode,
+		SelectedNodeIDs: selected,
+		TargetNodeIDs:   targetIDs,
+		Summary:         buildPlacementSummary(mode, targets),
+	}
+}
+
+func deriveRollout(topology []EdgeNode, placement EdgePlacement, activeRevision string, existing EdgeRollout) EdgeRollout {
+	resolved := derivePlacement(topology, placement)
+	previous := map[string]EdgeRolloutNode{}
+	for _, node := range existing.Nodes {
+		previous[node.NodeID] = node
+	}
+	rolloutNodes := make([]EdgeRolloutNode, 0, len(resolved.TargetNodeIDs))
+	targetSet := map[string]struct{}{}
+	for _, nodeID := range resolved.TargetNodeIDs {
+		targetSet[nodeID] = struct{}{}
+	}
+	for _, node := range topology {
+		if _, ok := targetSet[node.ID]; !ok {
+			continue
+		}
+		entry := EdgeRolloutNode{
+			NodeID:           node.ID,
+			Label:            node.Label,
+			Region:           node.Region,
+			VerificationPath: node.VerificationPath,
+			Status:           EdgeRolloutPending,
+		}
+		if previousNode, ok := previous[node.ID]; ok {
+			entry.Status = previousNode.Status
+			entry.AppliedRevisionID = previousNode.AppliedRevisionID
+			entry.LastAckAt = previousNode.LastAckAt
+			entry.LastError = previousNode.LastError
+		}
+		if activeRevision == "" || entry.AppliedRevisionID == activeRevision {
+			rolloutNodes = append(rolloutNodes, entry)
+			continue
+		}
+		entry.Status = EdgeRolloutPending
+		entry.AppliedRevisionID = ""
+		entry.LastAckAt = ""
+		entry.LastError = ""
+		rolloutNodes = append(rolloutNodes, entry)
+	}
+	return rolloutSummary(rolloutNodes)
+}
+
+func (s *Store) applyEdgeState(domain DomainRecord) DomainRecord {
+	domain.EdgePlacement = derivePlacement(s.edgeTopology, domain.EdgePlacement)
+	domain.EdgeRollout = deriveRollout(s.edgeTopology, domain.EdgePlacement, domain.ActiveRevision, domain.EdgeRollout)
+	if domain.EdgeRollout.Status == "applied" {
+		domain.AppliedRevision = domain.ActiveRevision
+		return domain
+	}
+	if domain.AppliedRevision == "" && len(domain.Revisions) > 0 {
+		domain.AppliedRevision = domain.Revisions[0].ID
+	}
+	return domain
+}
+
+func (s *Store) validatePlacement(input CreateDomainInput) (EdgePlacement, error) {
+	placement := derivePlacement(s.edgeTopology, EdgePlacement{
+		Mode:            EdgePlacementMode(strings.TrimSpace(input.EdgePlacementMode)),
+		SelectedNodeIDs: input.EdgeSelectedNodeIDs,
+	})
+	if placement.Mode == EdgePlacementSubset {
+		if len(placement.SelectedNodeIDs) == 0 {
+			return EdgePlacement{}, fmt.Errorf("select at least one edge node")
+		}
+		if len(placement.TargetNodeIDs) != len(placement.SelectedNodeIDs) {
+			return EdgePlacement{}, fmt.Errorf("selected edge node is not available")
+		}
+	}
+	return placement, nil
 }
 
 func validateOrigin(origin string, setupPath string) (string, string) {
@@ -244,12 +417,14 @@ func applySetupState(domain DomainRecord, validationMode string, shouldProbe boo
 }
 
 type CreateDomainInput struct {
-	Hostname        string
-	Mode            string
-	ProjectName     string
-	Origin          string
-	HealthCheckPath string
-	SetupPath       string
+	Hostname            string
+	Mode                string
+	ProjectName         string
+	Origin              string
+	HealthCheckPath     string
+	SetupPath           string
+	EdgePlacementMode   string
+	EdgeSelectedNodeIDs []string
 }
 
 type UpdateDomainSetupInput struct {
@@ -289,6 +464,10 @@ func buildDomain(id string, input CreateDomainInput) DomainRecord {
 		ProxyMode:       "proxied",
 		RouteHint:       healthCheckPath,
 		RateLimit:       defaultRateLimit,
+		EdgePlacement: EdgePlacement{
+			Mode:            EdgePlacementAllEligible,
+			SelectedNodeIDs: nil,
+		},
 	}
 	shouldProbe := input.Origin != ""
 	return applySetupState(domain, input.Mode, shouldProbe, shouldProbe)
@@ -331,6 +510,7 @@ func (s *Store) loadPersistedState() {
 		if domain.RateLimit < minimumQuotaSafeRateLimit {
 			domain.RateLimit = defaultRateLimit
 		}
+		domain = s.applyEdgeState(domain)
 		s.domains[domain.ID] = domain
 		if seq := domains.ParseDomainSequence(domain.ID); seq > s.nextDomain {
 			s.nextDomain = seq
@@ -399,7 +579,13 @@ func (s *Store) CreateDomain(input CreateDomainInput) (DomainRecord, error) {
 		}
 	}
 	input.Hostname = hostname
+	placement, err := s.validatePlacement(input)
+	if err != nil {
+		return DomainRecord{}, err
+	}
 	domain := buildDomain(s.nextDomainID(), input)
+	domain.EdgePlacement = placement
+	domain = s.applyEdgeState(domain)
 	s.domains[domain.ID] = domain
 	s.persistDomainLocked(domain)
 	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "domain-create", TraceID: domain.ID, DomainID: domain.ID, Revision: domain.ActiveRevision, Event: "domain.create", Outcome: "stored", Message: "Domain created in Go control service.", Timestamp: now()}); err != nil {
@@ -439,6 +625,7 @@ func (s *Store) UpdateDomainSetup(domainID string, input UpdateDomainSetupInput)
 		validationMode = string(DomainReady)
 	}
 	domain = applySetupState(domain, validationMode, true, true)
+	domain = s.applyEdgeState(domain)
 
 	s.domains[domainID] = domain
 	s.persistDomainLocked(domain)
@@ -466,6 +653,7 @@ func (s *Store) VerifyDomainDNS(domainID string) (DomainRecord, bool) {
 
 	domain.DNSStatus = "verified"
 	domain = applySetupState(domain, string(DomainReady), true, false)
+	domain = s.applyEdgeState(domain)
 
 	s.domains[domainID] = domain
 	s.persistDomainLocked(domain)
@@ -488,6 +676,7 @@ func (s *Store) RecheckOrigin(domainID string) (DomainRecord, bool) {
 		validationMode = string(DomainReady)
 	}
 	domain = applySetupState(domain, validationMode, true, true)
+	domain = s.applyEdgeState(domain)
 
 	s.domains[domainID] = domain
 	s.persistDomainLocked(domain)
@@ -502,7 +691,7 @@ func (s *Store) ListDomains() []DomainRecord {
 	defer s.mu.Unlock()
 	items := make([]DomainRecord, 0, len(s.domains))
 	for _, domain := range s.domains {
-		items = append(items, domain)
+		items = append(items, s.applyEdgeState(domain))
 	}
 	return items
 }
@@ -511,7 +700,109 @@ func (s *Store) GetDomain(id string) (DomainRecord, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	domain, ok := s.domains[id]
-	return domain, ok
+	if !ok {
+		return DomainRecord{}, false
+	}
+	return s.applyEdgeState(domain), true
+}
+
+func (s *Store) EdgeNodes() []EdgeNode {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return copyEdgeTopology(s.edgeTopology)
+}
+
+func (s *Store) RecordEdgeApply(ack EdgeApplyAcknowledgement) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	domain, ok := s.domains[ack.DomainID]
+	if !ok {
+		return fmt.Errorf("domain not found")
+	}
+	if ack.NodeID == "" {
+		return fmt.Errorf("nodeId is required")
+	}
+	if ack.RevisionID == "" {
+		return fmt.Errorf("revisionId is required")
+	}
+	if ack.Status == "" {
+		ack.Status = string(EdgeRolloutApplied)
+	}
+	if ack.Timestamp == "" {
+		ack.Timestamp = now()
+	}
+
+	domain = s.applyEdgeState(domain)
+	matched := false
+	for index := range domain.EdgeRollout.Nodes {
+		node := &domain.EdgeRollout.Nodes[index]
+		if node.NodeID != ack.NodeID {
+			continue
+		}
+		matched = true
+		if ack.RevisionID != domain.ActiveRevision {
+			return fmt.Errorf("revision does not match active revision")
+		}
+		node.LastAckAt = ack.Timestamp
+		switch ack.Status {
+		case string(EdgeRolloutFailed):
+			node.Status = EdgeRolloutFailed
+			node.LastError = ack.Message
+			node.AppliedRevisionID = ""
+		case string(EdgeRolloutApplied):
+			node.Status = EdgeRolloutApplied
+			node.AppliedRevisionID = ack.RevisionID
+			node.LastError = ""
+		default:
+			return fmt.Errorf("invalid edge apply status")
+		}
+		break
+	}
+	if !matched {
+		return fmt.Errorf("edge node is not targeted for domain")
+	}
+
+	domain.EdgeRollout = rolloutSummary(domain.EdgeRollout.Nodes)
+	domain = s.applyEdgeState(domain)
+	s.domains[domain.ID] = domain
+	s.persistDomainLocked(domain)
+	if err := s.appendLogLocked(ServiceLog{
+		Service:    "api",
+		Level:      "INFO",
+		RequestID:  "edge-apply",
+		TraceID:    traceIDOrDomain(ack.NodeID, domain.ID),
+		DomainID:   domain.ID,
+		Revision:   ack.RevisionID,
+		Event:      "edge.apply.ack",
+		Outcome:    ack.Status,
+		Message:    ack.Message,
+		Timestamp:  ack.Timestamp,
+		NodeID:     ack.NodeID,
+		NodeLabel:  resolveNodeLabel(domain.EdgeRollout.Nodes, ack.NodeID),
+		NodeRegion: resolveNodeRegion(domain.EdgeRollout.Nodes, ack.NodeID),
+	}); err != nil {
+		log.Printf("control-plane log persist failed: %v", err)
+	}
+	return nil
+}
+
+func resolveNodeLabel(nodes []EdgeRolloutNode, nodeID string) string {
+	for _, node := range nodes {
+		if node.NodeID == nodeID {
+			return node.Label
+		}
+	}
+	return ""
+}
+
+func resolveNodeRegion(nodes []EdgeRolloutNode, nodeID string) string {
+	for _, node := range nodes {
+		if node.NodeID == nodeID {
+			return node.Region
+		}
+	}
+	return ""
 }
 
 func (s *Store) GetDomainByHostname(hostname string) (DomainRecord, bool, error) {
@@ -531,7 +822,7 @@ func (s *Store) GetDomainByHostname(hostname string) (DomainRecord, bool, error)
 	if matched == nil {
 		return DomainRecord{}, false, nil
 	}
-	return *matched, true, nil
+	return s.applyEdgeState(*matched), true, nil
 }
 
 func (s *Store) RecordServiceLog(entry ServiceLog) {
@@ -549,6 +840,7 @@ func (s *Store) PublishPolicy(domainID string, cacheEnabled bool) (PolicyRevisio
 	if !ok {
 		return PolicyRevision{}, false
 	}
+	domain = s.applyEdgeState(domain)
 	revision := PolicyRevision{
 		ID:           policy.RevisionID(len(domain.Revisions) + 1),
 		CacheEnabled: cacheEnabled,
@@ -556,8 +848,8 @@ func (s *Store) PublishPolicy(domainID string, cacheEnabled bool) (PolicyRevisio
 		CreatedAt:    now(),
 	}
 	domain.ActiveRevision = revision.ID
-	domain.AppliedRevision = revision.ID
 	domain.Revisions = append(domain.Revisions, revision)
+	domain = s.applyEdgeState(domain)
 	s.domains[domainID] = domain
 	s.persistDomainLocked(domain)
 	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "policy-publish", TraceID: domainID, DomainID: domainID, Revision: revision.ID, Event: "policy.publish", Outcome: "applied", Message: revision.Label, Timestamp: now()}); err != nil {
@@ -573,6 +865,7 @@ func (s *Store) RollbackPolicy(domainID string) (PolicyRevision, bool) {
 	if !ok {
 		return PolicyRevision{}, false
 	}
+	domain = s.applyEdgeState(domain)
 	target := domain.Revisions[0]
 	for _, revision := range domain.Revisions {
 		if !revision.CacheEnabled {
@@ -581,7 +874,7 @@ func (s *Store) RollbackPolicy(domainID string) (PolicyRevision, bool) {
 		}
 	}
 	domain.ActiveRevision = target.ID
-	domain.AppliedRevision = target.ID
+	domain = s.applyEdgeState(domain)
 	s.domains[domainID] = domain
 	s.persistDomainLocked(domain)
 	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: "policy-rollback", TraceID: domainID, DomainID: domainID, Revision: target.ID, Event: "policy.rollback", Outcome: "baseline", Message: "Returned policy to baseline revision.", Timestamp: now()}); err != nil {
@@ -606,6 +899,7 @@ func (s *Store) EdgeContext(domainID, requestID, traceID string) (EdgeContext, b
 	if requestID == "" {
 		requestID = "config-lookup"
 	}
+	domain = s.applyEdgeState(domain)
 	if err := s.appendLogLocked(ServiceLog{Service: "api", Level: "INFO", RequestID: requestID, TraceID: traceIDOrDomain(traceID, domainID), DomainID: domainID, Revision: domain.ActiveRevision, Event: "config.lookup", Outcome: "served", Message: "Served edge context to Rust edge service.", Timestamp: now()}); err != nil {
 		log.Printf("control-plane log persist failed: %v", err)
 	}

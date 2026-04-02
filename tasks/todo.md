@@ -37,12 +37,15 @@
 - [completed] Tighten authenticated shell spacing and supporting panel styling to reduce blank space.
 - [completed] Re-run focused tests and browser verification for the updated authenticated pages.
 
-- [in_progress] Extend the sharper builder-style visual language across post-login pages.
-- [pending] Fix quota percentage formatting so stat tiles do not overflow with long decimals.
-- [pending] Re-run focused tests, build, and browser verification for the authenticated styling pass.
 - [completed] Extend the sharper builder-style visual language across post-login pages.
 - [completed] Fix quota percentage formatting so stat tiles do not overflow with long decimals.
 - [completed] Re-run focused tests, build, and browser verification for the authenticated styling pass.
+
+- [completed] Implement Unit 1 from `docs/plans/2026-04-01-003-feat-multi-edge-pull-zone-targeting-plan.md`: shared edge inventory and placement contracts in Go/TS.
+- [completed] Implement Unit 2: create-flow placement summary and optional subset selection.
+- [completed] Implement Units 3-4: multi-edge runtime topology, node identity, and rollout tracking.
+- [completed] Implement Units 5-6: zone-detail rollout visibility and multi-edge demo docs updates.
+- [completed] Run focused tests, full quality checks, and review for the multi-edge targeting feature.
 
 # Lessons
 
@@ -65,3 +68,12 @@
 - Analytics and zone detail now use denser split-workspace layouts so post-proof confirmation and active zone controls read like one operator surface instead of stacked generic cards.
 - Verification passed with `npm test -- tests/demo/dashboard-flow.test.tsx` and `npm run build`.
 - Added `docs/plans/2026-04-01-003-feat-multi-edge-pull-zone-targeting-plan.md`, which sequences control-plane placement modeling, multi-edge runtime topology, rollout telemetry, and zone-detail visibility while preserving the repo's onboarding and demo-honesty constraints.
+- Repo research confirmed the app already has the right spine for a real onboarding flow: domain creation, a domain detail workspace, policy revision publishing, request proof, service logs, and analytics summaries.
+- The best extension path is to enrich the shared `DomainRecord` lifecycle and reuse the existing `app/domains/new` -> `app/domains/[domainId]` flow rather than inventing a parallel onboarding system.
+- Demo framing exists mainly in copy and a few fields like `truthLabel`, `readinessNote`, and the hard-coded demo route hint, while the underlying control-plane and evidence seams are reusable.
+- Rust now evaluates `pending -> WAF -> rate limit -> quota -> cache/origin`, matching the documented request precedence.
+- Go no longer attempts ClickHouse replay from local events, which removes the append-only duplicate-event risk during analytics recovery.
+- ClickHouse degradation now stays explicit: failed analytics ingest falls back to local summaries with degraded freshness until reset/reseed restores trust.
+- Verification passed with `cargo test`, `go test ./...`, `go build ./...`, `npm test`, `npm run build`, and `docker compose config`.
+- Full `docker compose up -d --build` verification now passes after switching the Rust image path to `rustls` TLS and updating the Axum wildcard proxy route to `/{*path}`.
+- Added focused Vitest coverage for the multi-edge zone-detail shell and evidence tab switching so the new rollout and node-attribution UI has direct regression coverage.
