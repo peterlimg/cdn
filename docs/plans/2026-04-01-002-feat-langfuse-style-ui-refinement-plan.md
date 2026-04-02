@@ -9,7 +9,7 @@ date: 2026-04-01
 
 ## Overview
 
-Refine the buyer-facing Next.js UI so the product feels closer to the visual discipline of `langfuse.com`: restrained dark surfaces, strong type hierarchy, calmer chrome, compact high-contrast CTAs, and a consistent product shell across landing, auth, overview, sites, zone detail, and analytics.
+Refine the user-facing Next.js UI so the product feels closer to the visual discipline of `langfuse.com`: restrained dark surfaces, strong type hierarchy, calmer chrome, compact high-contrast CTAs, and a consistent product shell across landing, auth, overview, sites, zone detail, and analytics.
 
 This is not a homepage clone plan. It is a cross-page UI system plan for making the CDN demo feel like one premium product instead of a set of individually restyled screens.
 
@@ -65,7 +65,7 @@ The user explicitly wants the product to feel like Langfuse across the whole app
 - `docs/plans/2026-04-01-001-feat-simplify-onboarding-flow-plan.md`: the app should have one dominant next action per screen and should keep setup/proof/logs/analytics in a clear order.
 - `docs/plans/2026-03-31-feat-real-user-cdn-onboarding-flow-plan.md`: the authenticated entry should feel like a real product setup journey, not a demo operator tool.
 - `docs/demo/logs-and-evidence-guide.md`: proof/logs are immediate truth; analytics is confirmation.
-- `docs/demo/presentation-readiness-checklist.md`: the main buyer narrative should stay `config -> proof -> logs -> analytics`.
+- `docs/demo/presentation-readiness-checklist.md`: the main product narrative should stay `config -> proof -> logs -> analytics`.
 - `docs/demo/demo-claims-guardrails.md`: visual polish must not imply false product maturity.
 
 ### External References
@@ -107,7 +107,7 @@ The user explicitly wants the product to feel like Langfuse across the whole app
 ### Resolved During Planning
 
 - Should the Langfuse-style pass focus only on the landing page?
-  Resolution: No. The redesign target is the whole buyer-facing flow, especially authenticated surfaces.
+  Resolution: No. The redesign target is the whole user-facing flow, especially authenticated surfaces.
 
 - Should `/` become marketing-only so the app can separate concerns cleanly?
   Resolution: No. The user explicitly wants logged-in users to land on product UI at `/`.
@@ -416,7 +416,7 @@ The user explicitly wants the product to feel like Langfuse across the whole app
 ## Documentation / Operational Notes
 
 - Update any screenshots or walkthrough notes that still describe `/domains` as the first authenticated surface if the redirect target moves to `/`.
-- Refresh buyer-facing demo docs if page labels or narrative order change materially, especially `docs/demo/presentation-readiness-checklist.md` and README sections that describe the product flow.
+- Refresh user-facing demo docs if page labels or narrative order change materially, especially `docs/demo/presentation-readiness-checklist.md` and README sections that describe the product flow.
 - Keep copy changes within the honesty guardrails from `docs/demo/demo-claims-guardrails.md`.
 
 ## Sources & References

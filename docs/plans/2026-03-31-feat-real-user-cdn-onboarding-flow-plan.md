@@ -17,7 +17,7 @@ deepened: 2026-03-31
 1. Reframes the work around a real user journey instead of internal propagation mechanics.
 2. Defines the complete onboarding flow from login to first live CDN proof.
 3. Separates user-facing setup phases from backend propagation implementation details.
-4. Adds concrete state models, acceptance criteria, security decisions, and test strategy for a buyer-complete setup flow.
+4. Adds concrete state models, acceptance criteria, security decisions, and test strategy for an end-to-end setup flow.
 
 ### New Considerations Discovered
 - The current repo already has strong seams for domain setup, policy publishing, proof, logs, and analytics; the new plan should extend those surfaces instead of replacing them.
@@ -40,7 +40,7 @@ The current product and plans are still too centered on demo/operator flow and i
 4. When I click publish or activate, is the configuration only saved or actually live at the edge?
 5. How do I prove the CDN is working on real traffic once setup is complete?
 
-The system needs a product flow that gets a user from zero to “my CDN is configured and active” without depending on presenter narration or internal architecture knowledge.
+The system needs a product flow that gets a user from zero to “my CDN is configured and active” without depending on extra narration or internal architecture knowledge.
 
 ## Goals
 
@@ -375,7 +375,7 @@ Recommended shape:
 - `components/demo/domain-config-sections.tsx`
 - `components/demo/domain-state-timeline.tsx`
 
-### Phase 4: First Live Request and Buyer-Facing Proof
+### Phase 4: First Live Request and User-Facing Proof
 - Preserve the existing proof loop, but make it the final step of setup completion.
 - Ensure blocked/incomplete setup states yield explicit proof messaging.
 - Keep proof/logs as primary truth and analytics as confirmation.
@@ -409,7 +409,7 @@ Recommended shape:
 - [ ] Logs and analytics confirm the request after proof succeeds.
 
 ### UX / Product
-- [ ] The setup flow can be completed without presenter narration.
+- [ ] The setup flow can be completed without extra narration.
 - [ ] Every blocked or incomplete state explains what remains to finish setup.
 - [ ] The final success state tells the user that the CDN is active, not merely configured.
 - [ ] The product does not imply live verification until readiness and request proof actually succeed.

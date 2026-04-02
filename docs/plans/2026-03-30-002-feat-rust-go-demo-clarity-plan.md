@@ -10,18 +10,18 @@ origin: docs/brainstorms/2026-03-30-cdn-client-demo-brainstorm.md
 
 ## Overview
 
-Revise the current CDN demo so it visibly satisfies the client's architectural expectations and fixes the clarity issues found during live review. The next version must keep the narrow proof-loop story, but it can no longer rely on an all-TypeScript simulation for the critical path. A live request should move through a real Rust edge service and a real Go API/control service, while the dashboard makes domain configuration, domain state, and service evidence easy to understand.
+Revise the current CDN demo so it visibly satisfies the project requirements and fixes the clarity issues found during live review. The next version must keep the narrow proof-loop story, but it can no longer rely on an all-TypeScript simulation for the critical path. A live request should move through a real Rust edge service and a real Go API/control service, while the dashboard makes domain configuration, domain state, and service evidence easy to understand.
 
 ## Problem Statement / Motivation
 
-The current demo proves a useful product story, but it misses four buyer-critical points:
+The current demo proves a useful product story, but it misses four critical points:
 
-1. The client asked for Rust at the edge and Go for the API/control plane, and the current demo does not show either.
+1. The stated requirements call for Rust at the edge and Go for the API/control plane, and the current demo does not show either.
 2. The domains view is visually repetitive, so it does not communicate meaningful state or capability differences.
 3. The domain configuration story is under-specified; the user cannot clearly see what is being configured versus what is just explanatory framing.
 4. There is no explicit edge-log or API-log surface, so the architecture is not observable during the demo.
 
-Because this client is evaluating long-term technical credibility, these are not cosmetic gaps. They directly affect whether the demo feels like the first milestone of a serious CDN platform or only a polished frontend prototype.
+Because this work is being used to evaluate long-term technical credibility, these are not cosmetic gaps. They directly affect whether the demo feels like the first milestone of a serious CDN platform or only a polished frontend prototype.
 
 ## Proposed Solution
 
@@ -29,7 +29,7 @@ Keep the dashboard in Next.js/TypeScript, but move the critical proof path onto 
 
 - Rust service owns the edge request evaluation path.
 - Go service owns domain/config state, analytics summaries, and service log aggregation for the demo.
-- Next.js becomes a UI/proxy layer that renders state from those services and exposes a narrow buyer-facing operations view.
+- Next.js becomes a UI/proxy layer that renders state from those services and exposes a focused operations view.
 
 The dashboard should then be revised around three clear surfaces:
 
@@ -41,7 +41,7 @@ The dashboard should then be revised around three clear surfaces:
 
 - The dashboard should remain on the Node runtime. There is no value in introducing Next Edge runtime constraints into this demo.
 - Rust edge should be thin: request normalization, cache decision, quota check, proof/log emission, and forwarding to Go when needed.
-- Go should be the contract authority for domain/config state and buyer-facing API surfaces.
+- Go should be the contract authority for domain/config state and user-facing API surfaces.
 - Structured logs and trace correlation should be mandatory for the demo path: `service`, `request_id`, `trace_id`, `domain_id`, `revision_id`, `event`, `outcome`.
 - Domain configuration must be scoped to onboarding/product shape, not a full DNS host product.
 - The UI should treat proof/logs as low-noise evidence, not a generic observability dashboard.
@@ -49,7 +49,7 @@ The dashboard should then be revised around three clear surfaces:
 ## Requirements Trace
 
 - R1. Show a real Rust edge service on the live request path.
-- R2. Show a real Go API/control service for domain/config and buyer-facing state.
+- R2. Show a real Go API/control service for domain/config and visible state.
 - R3. Make domain configuration visible and understandable without implying a full managed DNS product.
 - R4. Differentiate domain states clearly in the domains view and zone detail flow.
 - R5. Expose where edge logs and API logs can be seen, with clear purpose boundaries between proof, logs, and analytics.
@@ -93,12 +93,12 @@ The dashboard should then be revised around three clear surfaces:
 ### Institutional Learnings
 
 - The existing brainstorm and first demo plan consistently favor a narrow, causal control-plane to edge proof loop over broad surface area.
-- Existing demo docs already emphasize truth-labeling, presenter-safe proof, and scope honesty.
+- Existing demo docs already emphasize truth-labeling, review-safe proof, and scope honesty.
 
 ### External References
 
-- Best-practice research: for a technical buyer, make the expected architecture real on the critical path, not just in diagrams.
-- Observability research: show only three buyer-facing evidence surfaces when possible: request proof, filtered service logs, and a small confirmation layer.
+- Best-practice research: for technical review, make the expected architecture real on the critical path, not just in diagrams.
+- Observability research: show only three evidence surfaces when possible: request proof, filtered service logs, and a small confirmation layer.
 - Framework/docs research: keep the dashboard on Next.js Node runtime, use Go as the contract authority, and keep Rust edge thin and request-oriented.
 
 ## Key Technical Decisions
@@ -107,12 +107,12 @@ The dashboard should then be revised around three clear surfaces:
 - Make Rust edge the primary runtime proof of architecture, not just a sidecar. A cache-enabled request must actually execute edge logic in Rust.
 - Make Go the authoritative source of domain/config state, analytics summaries, and service-log retrieval APIs.
 - Split evidence into three explicit layers:
-  - **Request proof**: buyer-readable summary of one request outcome.
+  - **Request proof**: readable summary of one request outcome.
   - **Edge logs**: why the edge served, cached, blocked, or forwarded the request.
   - **API logs**: why the control/API service accepted, rejected, or summarized the related state.
 - Redesign domain configuration as a task-oriented flow with explicit sections: hostname, origin, onboarding DNS records, readiness status, active revision, and cache policy. Avoid generic card repetition.
 - Keep the primary walkthrough anchored on the proof loop. Logs and config views support the story; they do not replace it.
-- Use one correlation key across proof, logs, and analytics, such as `request_id` plus `trace_id`, so the buyer can follow one action end to end.
+- Use one correlation key across proof, logs, and analytics, such as `request_id` plus `trace_id`, so a reader can follow one action end to end.
 - Explicitly distinguish `expected empty` logs from missing logs. For example, a cache hit may have no API-call log for that request by design.
 
 ## Open Questions
@@ -127,7 +127,7 @@ The dashboard should then be revised around three clear surfaces:
 
 - Whether Rust edge forwards to Go for origin fetch simulation or only for config/policy lookup. The plan only requires a real Rust edge decision path and a real Go API/control path.
 - Whether the demo uses REST/JSON only between services or also adopts a schema layer such as Buf-managed protobufs. This can be decided during implementation based on speed and clarity.
-- Whether traces are shown in a custom dashboard panel or only exposed through correlated log fields and request proof. The buyer-visible requirement is correlation, not a full tracing product.
+- Whether traces are shown in a custom dashboard panel or only exposed through correlated log fields and request proof. The visible requirement is correlation, not a full tracing product.
 
 ## High-Level Technical Design
 
@@ -162,7 +162,7 @@ flowchart LR
 - Redesign the domains page and zone detail around visible state, setup tasks, and distinct next actions.
 - Add explicit domain configuration sections with clear boundaries between onboarding records, origin settings, and live-readiness state.
 
-### Phase 3: Add Buyer-Facing Evidence Surfaces
+### Phase 3: Add Evidence Surfaces
 
 - Add request proof, edge logs, and API logs with shared request correlation.
 - Tighten analytics so it remains a confirmation layer and does not contradict logs or proof.
@@ -171,7 +171,7 @@ flowchart LR
 
 - [ ] **Unit 1: Introduce real Rust edge and Go API services**
 
-**Goal:** Replace the TypeScript-only critical path with real service boundaries that satisfy the client’s architecture requirement.
+**Goal:** Replace the TypeScript-only critical path with real service boundaries that satisfy the architecture requirement.
 
 **Requirements:** R1, R2, R6, R7
 
@@ -209,7 +209,7 @@ flowchart LR
 - Integration: request proof fields shown in the UI are produced by Rust and retrieved through the real service boundary.
 
 **Verification:**
-- A presenter can credibly state that the dashboard is TypeScript, the edge path is Rust, and the control/API service is Go because one request actually traverses those runtimes.
+- A reviewer can credibly confirm that the dashboard is TypeScript, the edge path is Rust, and the control/API service is Go because one request actually traverses those runtimes.
 
 - [ ] **Unit 2: Redesign domain list and configuration flow for clarity**
 
@@ -233,21 +233,21 @@ flowchart LR
 - Replace repetitive domain cards with differentiated rows/cards showing hostname, state, origin, live-readiness, active revision, and next action.
 - Make the zone detail page explain domain configuration in explicit sections: DNS records, origin target, proxy status, readiness contract, and cache policy.
 - Add clear language for `pending`, `ready`, `blocked`, and any degraded states used in the demo.
-- Ensure the UI distinguishes `configured` from `live` so the buyer understands what is ready for traffic.
+- Ensure the UI distinguishes `configured` from `live` so it is clear what is ready for traffic.
 
 **Test scenarios:**
 - Happy path: a ready domain clearly shows it can enter the live proof path.
 - Happy path: a pending domain clearly shows what remains to be configured.
-- Edge case: an empty domains view guides the presenter toward creating a ready or pending domain with different consequences.
+- Edge case: an empty domains view guides the reader toward creating a ready or pending domain with different consequences.
 - Error path: invalid or duplicate domain input returns a bounded validation state.
 - Integration: state shown in the domains list matches the zone detail and Go service response.
 
 **Verification:**
-- A viewer can answer “what is configured here?” and “what is this domain’s state?” without presenter translation.
+- A viewer can answer “what is configured here?” and “what is this domain’s state?” without extra translation.
 
 - [ ] **Unit 3: Add explicit edge-log and API-log evidence surfaces**
 
-**Goal:** Show where the edge and API service logs can be seen without overwhelming the buyer.
+**Goal:** Show where the edge and API service logs can be seen without overwhelming the reader.
 
 **Requirements:** R5, R6, R7
 
@@ -266,7 +266,7 @@ flowchart LR
 **Approach:**
 - Keep request proof as the primary evidence surface.
 - Add secondary log panels for edge logs and API logs, filtered to the active request and current tenant.
-- Use correlated fields so the buyer can map one action across proof and both log streams.
+- Use correlated fields so a reader can map one action across proof and both log streams.
 - Define and label expected-empty states, especially when a cache hit should not produce a new API activity log.
 
 **Test scenarios:**
@@ -310,11 +310,11 @@ flowchart LR
 - Integration: analytics values come from the Go service rather than in-process UI state.
 
 **Verification:**
-- The analytics view still works as the buyer-facing confirmation layer after the service split.
+- The analytics view still works as the confirmation layer after the service split.
 
 - [ ] **Unit 5: Add demo operations affordances for rehearsal and explanation**
 
-**Goal:** Make the revised multi-service demo easy to operate during a pitch.
+**Goal:** Make the revised multi-service demo easy to operate during review.
 
 **Requirements:** R6, R7
 
@@ -331,7 +331,7 @@ flowchart LR
 
 **Approach:**
 - Document exactly what is now real in Rust and Go.
-- Add a simple service map for the buyer and a presenter-only operations guide for reset, startup, and evidence interpretation.
+- Add a simple service map plus an operations guide for reset, startup, and evidence interpretation.
 - Include reset/reseed steps and what to say when API logs are intentionally empty for cache hits.
 
 **Test scenarios:**
@@ -341,7 +341,7 @@ flowchart LR
 - Integration: the presentation guide matches the actual UI surfaces and service boundaries.
 
 **Verification:**
-- Another engineer can start the services and explain the architecture honestly during a client call.
+- Another engineer can start the services and explain the architecture honestly during a review call.
 
 ## Success Metrics
 
@@ -358,7 +358,7 @@ flowchart LR
 | The demo becomes an observability console instead of a product demo | Keep request proof primary and logs secondary, filtered, and low-noise |
 | Domain configuration expands into a fake DNS product | Limit the configuration view to onboarding records, origin target, readiness, and policy |
 | Cross-service state becomes inconsistent | Make Go the authority for config/state and use shared request correlation across surfaces |
-| Cache hits confuse buyers because API logs may be absent | Add explicit expected-empty messaging in the API log panel |
+| Cache hits can be confusing because API logs may be absent | Add explicit expected-empty messaging in the API log panel |
 | The architecture is still questioned during review | Document the service map and expose runtime-specific log surfaces clearly in the UI |
 
 ## References & Research
