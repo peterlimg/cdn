@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
-  <rect width="120" height="120" rx="16" fill="#1a1d27"/>
-  <circle cx="60" cy="50" r="24" fill="none" stroke="#3b82f6" stroke-width="3"/>
-  <path d="M60 26 L60 20 M60 80 L60 74 M36 50 L30 50 M90 50 L84 50" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="60" cy="50" r="6" fill="#3b82f6"/>
-  <text x="60" y="98" text-anchor="middle" fill="#8b8fa3" font-family="sans-serif" font-size="11" font-weight="500">CDN TEST</text>
-</svg>
