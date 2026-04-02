@@ -33,7 +33,7 @@ export function CachePolicyCard({ domainId, cacheEnabled, revisionLabel, onChang
     <div className="card stack">
       <div>
         <span className="eyebrow">Primary control</span>
-        <h3>Cache policy for /assets/site.css</h3>
+        <h3>Cache policy for the configured request path</h3>
         <p className="muted small">
           Keep this route uncached to show baseline origin fetches, then enable edge cache to prove
           MISS to HIT with the next repeated request.

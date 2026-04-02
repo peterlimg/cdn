@@ -137,7 +137,7 @@ export function DomainConfigSections({
           <div>
             <span className="eyebrow">Origin</span>
             <h4 style={{ marginBottom: 4 }}>{origin}</h4>
-            <div className="small muted">Health check: {displayRouteLabel(healthCheckPath || "/assets/site.css")}</div>
+            <div className="small muted">Health check: {displayRouteLabel(healthCheckPath || "/")}</div>
           </div>
           <div className="badge pending">{proxyMode ?? "proxied"}</div>
         </div>
