@@ -18,7 +18,7 @@ export default async function HomePage() {
       <section className="hero hero-marketing">
         <div className="hero-panel hero-panel-marketing">
           <div className="hero-copy stack">
-            <span className="eyebrow">Northstar CDN</span>
+            <span className="eyebrow">Unseen</span>
             <div className="hero-pill">Pull zones for fast global delivery</div>
             <h2>Launch pull zones fast.</h2>
             <p className="subtitle">
@@ -53,7 +53,7 @@ export default async function HomePage() {
                 <span />
               </div>
               <span className="console-title">proof-loop.ts</span>
-              <span className="console-status">ready-site.northstarcdn.test</span>
+              <span className="console-status">ready-site.unseencdn.test</span>
             </div>
 
             <div className="console-body">

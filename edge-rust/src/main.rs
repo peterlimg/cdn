@@ -309,7 +309,7 @@ mod tests {
             request_id: "req-123".to_string(),
             trace_id: "trace-123".to_string(),
             domain_id: "zone-123".to_string(),
-            hostname: "ready-demo.northstarcdn.test".to_string(),
+            hostname: "ready-demo.unseencdn.test".to_string(),
             path: "/assets/demo.css".to_string(),
             timestamp: "2026-03-31T00:00:00Z".to_string(),
             revision_id: "rev-1".to_string(),
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn normalize_hostname_drops_port() {
-        assert_eq!(super::normalize_hostname("ready-site.northstarcdn.test:8081").as_deref(), Some("ready-site.northstarcdn.test"));
+        assert_eq!(super::normalize_hostname("ready-site.unseencdn.test:8081").as_deref(), Some("ready-site.unseencdn.test"));
     }
 }
 

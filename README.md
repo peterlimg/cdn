@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>Northstar CDN</h1>
+  <h1>Unseen</h1>
   <p><strong>CDN control plane and edge runtime built with Rust, Go, and TypeScript.</strong></p>
   <p>
     Domain onboarding, DNS verification flow, origin health checks, cache policy revisions,
@@ -31,7 +31,7 @@
 
 <p align="center">
   <a href="https://www.loom.com/share/10feee78bdef4a4499c15a8e79b2aefa">
-    <img src="docs/assets/northstar-cdn-hero.jpg" alt="Northstar CDN walkthrough video" width="100%" />
+    <img src="docs/assets/unseen-hero.jpg" alt="Unseen walkthrough video" width="100%" />
   </a>
 </p>
 
@@ -39,7 +39,7 @@
   <a href="https://www.loom.com/share/10feee78bdef4a4499c15a8e79b2aefa"><strong>Watch the overview video</strong></a>
 </p>
 
-Northstar CDN is a working CDN platform prototype with clear separation between the control plane, edge runtime, analytics pipeline, and operator dashboard.
+Unseen is a working CDN platform prototype with clear separation between the control plane, edge runtime, analytics pipeline, and operator dashboard.
 
 The platform combines:
 - Rust for edge request handling, cache behavior, and WAF-style filtering
@@ -130,7 +130,7 @@ This allows the system to demonstrate early regional rollout patterns and edge-t
 
 ## 🚦 Request Outcomes
 
-Northstar CDN currently surfaces request outcomes including:
+Unseen currently surfaces request outcomes including:
 - `BYPASS`
 - `MISS`
 - `HIT`
@@ -159,7 +159,7 @@ For a guided run sequence, see `docs/demo/demo-script.md`.
 
 ## 🧭 Scope Boundary
 
-Northstar CDN is a working CDN prototype with a defined scope. It currently focuses on core CDN workflows and public traffic delivery patterns.
+Unseen is a working CDN prototype with a defined scope. It currently focuses on core CDN workflows and public traffic delivery patterns.
 
 Supported now:
 - public/static origins behind the CDN
@@ -244,7 +244,7 @@ npm run dev:edge   # Rust edge on :4002
 | `CLICKHOUSE_PASSWORD` | `demo-clickhouse` | ClickHouse HTTP password for local compose |
 | `GO_API_URL` | `http://127.0.0.1:4001` | Go API base URL |
 | `RUST_EDGE_URL` | `http://127.0.0.1:4002` | Generic Rust edge base URL. Through Docker this points at Nginx's shared `/edge` path, while node-specific verification routes are exposed under `/edge-nodes/<node-id>`. |
-| `SESSION_SECRET` | `northstar-demo-session-secret` | HMAC key for session cookies |
+| `SESSION_SECRET` | `unseen-demo-session-secret` | HMAC key for session cookies |
 
 ## 🔨 Build
 
@@ -321,4 +321,4 @@ See `docs/demo/` for runtime guides and reference docs:
 
 ## Summary
 
-Northstar CDN brings together edge request handling, control-plane APIs, analytics, and dashboard workflows in a single multi-service CDN platform prototype. It demonstrates the core mechanics of domain onboarding, cache behavior, traffic enforcement, operational visibility, and phased edge rollout in a stack built with Rust, Go, and TypeScript.
+Unseen brings together edge request handling, control-plane APIs, analytics, and dashboard workflows in a single multi-service CDN platform prototype. It demonstrates the core mechanics of domain onboarding, cache behavior, traffic enforcement, operational visibility, and phased edge rollout in a stack built with Rust, Go, and TypeScript.

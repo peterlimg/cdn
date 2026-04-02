@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import type { EdgeNode, SetupPath } from "../../services/shared/src/types"
 
 const defaultHostnames = {
-  ready: "ready-site.northstarcdn.test",
-  pending: "pending-site.northstarcdn.test",
+  ready: "ready-site.unseencdn.test",
+  pending: "pending-site.unseencdn.test",
 } as const
 
 const defaultOrigins: Record<SetupPath, string> = {
@@ -174,7 +174,7 @@ export function NewDomainForm({ edgeNodes }: { edgeNodes: EdgeNode[] }) {
             onChange={(event) => {
               setHostname(event.target.value)
             }}
-            placeholder="ready-site.northstarcdn.test"
+            placeholder="ready-site.unseencdn.test"
             value={hostname}
           />
           <div className="small muted">The public hostname visitors will use for this site.</div>

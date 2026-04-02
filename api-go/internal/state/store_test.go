@@ -60,7 +60,7 @@ func TestAnalyticsFallsBackToLocalSummaryAfterInsertFailure(t *testing.T) {
 		},
 	}
 	store := NewStore(nil, analytics)
-	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.northstarcdn.test", Mode: string(DomainReady)})
+	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.unseencdn.test", Mode: string(DomainReady)})
 	if err != nil {
 		t.Fatalf("create domain: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestAnalyticsRecoversAfterTransientQueryFailure(t *testing.T) {
 		},
 	}
 	store := NewStore(nil, analytics)
-	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.northstarcdn.test", Mode: string(DomainReady)})
+	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.unseencdn.test", Mode: string(DomainReady)})
 	if err != nil {
 		t.Fatalf("create domain: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestAnalyticsRecoversAfterTransientQueryFailure(t *testing.T) {
 func TestAnalyticsWarningReflectsGuardedIngestFallback(t *testing.T) {
 	analytics := &analyticsStub{enabled: true, insertErr: errors.New("clickhouse unavailable")}
 	store := NewStore(nil, analytics)
-	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.northstarcdn.test", Mode: string(DomainReady)})
+	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.unseencdn.test", Mode: string(DomainReady)})
 	if err != nil {
 		t.Fatalf("create domain: %v", err)
 	}
@@ -247,7 +247,7 @@ func TestAnalyticsWarningReflectsGuardedIngestFallback(t *testing.T) {
 func TestUpdateDomainSetupRejectsUnsafeExistingOrigin(t *testing.T) {
 	store := NewStore(nil, nil)
 	domain, err := store.CreateDomain(CreateDomainInput{
-		Hostname:  "pending-demo.northstarcdn.test",
+		Hostname:  "pending-demo.unseencdn.test",
 		Mode:      string(DomainPending),
 		Origin:    "https://static.example.com",
 		SetupPath: "existing-origin",
@@ -305,7 +305,7 @@ func TestVerifyDomainDNSPromotesHealthyOrigin(t *testing.T) {
 	publicishOrigin := fmt.Sprintf("http://127.0.0.1.nip.io:%s", parsedURL.Port())
 
 	domain, err := store.CreateDomain(CreateDomainInput{
-		Hostname:        "pending-demo.northstarcdn.test",
+		Hostname:        "pending-demo.unseencdn.test",
 		Mode:            string(DomainPending),
 		Origin:          publicishOrigin,
 		HealthCheckPath: "/healthz",
@@ -360,7 +360,7 @@ func TestVerifyDomainDNSPromotesHealthyOrigin(t *testing.T) {
 func TestUpdateDomainSetupFailsWhenOriginIsUnreachable(t *testing.T) {
 	store := NewStore(nil, nil)
 	domain, err := store.CreateDomain(CreateDomainInput{
-		Hostname:  "pending-demo.northstarcdn.test",
+		Hostname:  "pending-demo.unseencdn.test",
 		Mode:      string(DomainPending),
 		Origin:    "https://static.example.com",
 		SetupPath: "existing-origin",
@@ -387,7 +387,7 @@ func TestUpdateDomainSetupFailsWhenOriginIsUnreachable(t *testing.T) {
 func TestRecheckOriginRevalidatesStoredOrigin(t *testing.T) {
 	store := NewStore(nil, nil)
 	domain, err := store.CreateDomain(CreateDomainInput{
-		Hostname:  "pending-demo.northstarcdn.test",
+		Hostname:  "pending-demo.unseencdn.test",
 		Mode:      string(DomainPending),
 		Origin:    "https://static.example.com",
 		SetupPath: "existing-origin",
@@ -413,12 +413,12 @@ func TestRecheckOriginRevalidatesStoredOrigin(t *testing.T) {
 
 func TestCreateDomainRejectsDuplicateHostname(t *testing.T) {
 	store := NewStore(nil, nil)
-	_, err := store.CreateDomain(CreateDomainInput{Hostname: "Test.NorthstarCDN.test", Mode: string(DomainReady)})
+	_, err := store.CreateDomain(CreateDomainInput{Hostname: "Test.UnseenCDN.test", Mode: string(DomainReady)})
 	if err != nil {
 		t.Fatalf("first create should succeed: %v", err)
 	}
 
-	_, err = store.CreateDomain(CreateDomainInput{Hostname: "test.northstarcdn.test", Mode: string(DomainReady)})
+	_, err = store.CreateDomain(CreateDomainInput{Hostname: "test.unseencdn.test", Mode: string(DomainReady)})
 	if err == nil {
 		t.Fatal("expected duplicate hostname to be rejected")
 	}
@@ -446,10 +446,10 @@ func TestExistingOriginLegacyRouteHintBackfillsToHealthCheckPath(t *testing.T) {
 
 func TestGetDomainByHostnameReturnsErrorForAmbiguousMatches(t *testing.T) {
 	store := NewStore(nil, nil)
-	store.domains["zone-1"] = DomainRecord{ID: "zone-1", Hostname: "dup.northstarcdn.test"}
-	store.domains["zone-2"] = DomainRecord{ID: "zone-2", Hostname: "DUP.northstarcdn.test"}
+	store.domains["zone-1"] = DomainRecord{ID: "zone-1", Hostname: "dup.unseencdn.test"}
+	store.domains["zone-2"] = DomainRecord{ID: "zone-2", Hostname: "DUP.unseencdn.test"}
 
-	_, ok, err := store.GetDomainByHostname("dup.northstarcdn.test")
+	_, ok, err := store.GetDomainByHostname("dup.unseencdn.test")
 	if err == nil {
 		t.Fatal("expected ambiguous hostname lookup to fail")
 	}
@@ -463,7 +463,7 @@ func TestGetDomainByHostnameReturnsErrorForAmbiguousMatches(t *testing.T) {
 
 func TestCreateDomainDefaultsToAllEligibleEdgePlacement(t *testing.T) {
 	store := NewStore(nil, nil)
-	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.northstarcdn.test", Mode: string(DomainReady)})
+	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.unseencdn.test", Mode: string(DomainReady)})
 	if err != nil {
 		fatalf := t.Fatalf
 		fatalf("create domain: %v", err)
@@ -489,7 +489,7 @@ func TestCreateDomainDefaultsToAllEligibleEdgePlacement(t *testing.T) {
 func TestCreateDomainSubsetPlacementDeduplicatesSelection(t *testing.T) {
 	store := NewStore(nil, nil)
 	domain, err := store.CreateDomain(CreateDomainInput{
-		Hostname:            "subset-demo.northstarcdn.test",
+		Hostname:            "subset-demo.unseencdn.test",
 		Mode:                string(DomainReady),
 		EdgePlacementMode:   string(EdgePlacementSubset),
 		EdgeSelectedNodeIDs: []string{"edge-us-east", "edge-us-east", "edge-eu-west"},
@@ -512,7 +512,7 @@ func TestCreateDomainSubsetPlacementDeduplicatesSelection(t *testing.T) {
 func TestCreateDomainRejectsUnknownEdgeNode(t *testing.T) {
 	store := NewStore(nil, nil)
 	_, err := store.CreateDomain(CreateDomainInput{
-		Hostname:            "invalid-demo.northstarcdn.test",
+		Hostname:            "invalid-demo.unseencdn.test",
 		Mode:                string(DomainReady),
 		EdgePlacementMode:   string(EdgePlacementSubset),
 		EdgeSelectedNodeIDs: []string{"edge-us-east", "edge-unknown"},
@@ -528,7 +528,7 @@ func TestCreateDomainRejectsUnknownEdgeNode(t *testing.T) {
 func TestCreateDomainRejectsEmptySubsetSelection(t *testing.T) {
 	store := NewStore(nil, nil)
 	_, err := store.CreateDomain(CreateDomainInput{
-		Hostname:          "empty-subset-demo.northstarcdn.test",
+		Hostname:          "empty-subset-demo.unseencdn.test",
 		Mode:              string(DomainReady),
 		EdgePlacementMode: string(EdgePlacementSubset),
 	})
@@ -544,7 +544,7 @@ func TestGetDomainBackfillsLegacyPlacementFromTopology(t *testing.T) {
 	store := NewStore(nil, nil)
 	store.domains["zone-legacy"] = DomainRecord{
 		ID:             "zone-legacy",
-		Hostname:       "legacy-demo.northstarcdn.test",
+		Hostname:       "legacy-demo.unseencdn.test",
 		Origin:         "https://static.example.com",
 		Status:         DomainReady,
 		ReadinessNote:  "legacy",
@@ -572,7 +572,7 @@ func TestGetDomainBackfillsLegacyPlacementFromTopology(t *testing.T) {
 
 func TestRecordEdgeApplyPromotesActiveRevisionAfterTargetAcknowledgements(t *testing.T) {
 	store := NewStore(nil, nil)
-	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "rollout-demo.northstarcdn.test", Mode: string(DomainReady)})
+	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "rollout-demo.unseencdn.test", Mode: string(DomainReady)})
 	if err != nil {
 		t.Fatalf("create domain: %v", err)
 	}

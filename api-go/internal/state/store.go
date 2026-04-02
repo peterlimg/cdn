@@ -135,8 +135,8 @@ func baselineRevision() PolicyRevision {
 
 func buildDNSRecords(hostname string) []DNSRecord {
 	return []DNSRecord{
-		{Host: hostname, Type: "CNAME", Value: "edge.northstar-demo.internal", Purpose: "Proxy traffic through Rust edge", TTL: 60, Proxied: true},
-		{Host: "_verify." + hostname, Type: "TXT", Value: "northstar-demo-verification", Purpose: "Demo verification record", TTL: 60, Proxied: false},
+		{Host: hostname, Type: "CNAME", Value: "edge.unseen-demo.internal", Purpose: "Proxy traffic through Rust edge", TTL: 60, Proxied: true},
+		{Host: "_verify." + hostname, Type: "TXT", Value: "unseen-demo-verification", Purpose: "Demo verification record", TTL: 60, Proxied: false},
 	}
 }
 

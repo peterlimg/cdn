@@ -2,12 +2,12 @@ import { NextResponse } from "next/server"
 
 const demoCss = [
   ":root {",
-  "  --northstar-bg: #08111f;",
-  "  --northstar-panel: #10203b;",
-  "  --northstar-accent: #5cc8ff;",
+  "  --unseen-bg: #08111f;",
+  "  --unseen-panel: #10203b;",
+  "  --unseen-accent: #5cc8ff;",
   "}",
   ".demo-shell {",
-  "  background: linear-gradient(180deg, var(--northstar-bg), var(--northstar-panel));",
+  "  background: linear-gradient(180deg, var(--unseen-bg), var(--unseen-panel));",
   "  color: white;",
   "  padding: 24px;",
   "}",
@@ -16,7 +16,7 @@ const demoCss = [
   "  border-radius: 12px;",
   "  padding: 12px 16px;",
   "}",
-].join("\n") + "\n" + ".demo-cache-line { color: var(--northstar-accent); }\n".repeat(800)
+].join("\n") + "\n" + ".demo-cache-line { color: var(--unseen-accent); }\n".repeat(800)
 
 export async function GET(
   _request: Request,

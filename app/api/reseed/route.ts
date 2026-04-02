@@ -13,8 +13,8 @@ type ReseedBody = {
 }
 
 const defaultHostnames = {
-  ready: "ready-site.northstarcdn.test",
-  pending: "pending-site.northstarcdn.test",
+  ready: "ready-site.unseencdn.test",
+  pending: "pending-site.unseencdn.test",
 } as const
 
 export async function POST(request: Request) {

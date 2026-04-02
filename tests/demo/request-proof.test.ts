@@ -9,7 +9,7 @@ describe("request proof loop", () => {
   })
 
   it("shows baseline bypass before cache is enabled", () => {
-    const domain = createDomain({ hostname: "ready-demo.northstarcdn.test", mode: "ready" })
+    const domain = createDomain({ hostname: "ready-demo.unseencdn.test", mode: "ready" })
     const proof = evaluateRequest({ domainId: domain.id })
 
     expect(proof.cacheStatus).toBe("BYPASS")
@@ -17,7 +17,7 @@ describe("request proof loop", () => {
   })
 
   it("changes from miss to hit after enabling cache", () => {
-    const domain = createDomain({ hostname: "ready-demo.northstarcdn.test", mode: "ready" })
+    const domain = createDomain({ hostname: "ready-demo.unseencdn.test", mode: "ready" })
     publishCachePolicy(domain.id, true)
 
     const miss = evaluateRequest({ domainId: domain.id })
@@ -29,7 +29,7 @@ describe("request proof loop", () => {
   })
 
   it("blocks traffic for pending domains", () => {
-    const domain = createDomain({ hostname: "pending-demo.northstarcdn.test", mode: "pending" })
+    const domain = createDomain({ hostname: "pending-demo.unseencdn.test", mode: "pending" })
     const proof = evaluateRequest({ domainId: domain.id })
 
     expect(proof.cacheStatus).toBe("BLOCKED_PENDING")
@@ -37,7 +37,7 @@ describe("request proof loop", () => {
   })
 
   it("returns to bypass after rollback", () => {
-    const domain = createDomain({ hostname: "ready-demo.northstarcdn.test", mode: "ready" })
+    const domain = createDomain({ hostname: "ready-demo.unseencdn.test", mode: "ready" })
     publishCachePolicy(domain.id, true)
     evaluateRequest({ domainId: domain.id })
     rollbackCachePolicy(domain.id)

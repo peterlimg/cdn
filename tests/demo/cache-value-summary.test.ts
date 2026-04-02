@@ -10,7 +10,7 @@ describe("cache value summary", () => {
   })
 
   it("counts cached bytes as offload value", () => {
-    const domain = createDomain({ hostname: "ready-demo.northstarcdn.test", mode: "ready" })
+    const domain = createDomain({ hostname: "ready-demo.unseencdn.test", mode: "ready" })
     publishCachePolicy(domain.id, true)
 
     evaluateRequest({ domainId: domain.id })

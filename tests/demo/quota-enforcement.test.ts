@@ -9,7 +9,7 @@ describe("quota enforcement", () => {
   })
 
   it("blocks the next request after the free-plan limit is reached", () => {
-    const domain = createDomain({ hostname: "ready-demo.northstarcdn.test", mode: "ready" })
+    const domain = createDomain({ hostname: "ready-demo.unseencdn.test", mode: "ready" })
     publishCachePolicy(domain.id, true)
 
     setState((state) => ({ ...state, quotaUsedBytes: state.quotaLimitBytes }))
