@@ -11,8 +11,6 @@ date: 2026-04-01
 
 Simplify the current onboarding and setup experience so a user can move from `"I created a site"` to `"I saw first proof through the CDN"` without parsing multiple competing cards, conflicting state labels, or architecture-heavy detail.
 
-**Primary persona:** A demo evaluator or potential customer seeing the CDN product for the first time during a guided or self-serve walkthrough. The components live under `components/demo/` because the product is currently in a demo/proof-of-concept stage, not because there is a separate "real" onboarding path. Simplification optimizes the narrative for this evaluator persona while preserving the technical depth reviewers need via progressive disclosure.
-
 This plan is a focused follow-up to `docs/plans/2026-03-31-feat-real-user-cdn-onboarding-flow-plan.md`. That earlier plan established the end-to-end real-user setup journey. This plan narrows in on information architecture, copy, progressive disclosure, and screen hierarchy so the existing implementation becomes easier to follow.
 
 ## Problem Frame
