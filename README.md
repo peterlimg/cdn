@@ -17,6 +17,7 @@ It includes:
 
 The system is backed by PostgreSQL, Redis, ClickHouse, Nginx, and Docker Compose.
 
+![Northstar CDN hero](docs/assets/northstar-cdn-hero.jpg)
 Walkthrough video: https://www.loom.com/share/10feee78bdef4a4499c15a8e79b2aefa
 
 ## Overview
