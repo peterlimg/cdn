@@ -17,6 +17,8 @@ It includes:
 
 The system is backed by PostgreSQL, Redis, ClickHouse, Nginx, and Docker Compose.
 
+![Northstar CDN hero](docs/assets/northstar-cdn-hero.jpg)
+
 ## Overview
 
 Northstar CDN is a working CDN platform prototype with clear separation between the control plane, edge runtime, analytics pipeline, and operator dashboard.
