@@ -23,6 +23,11 @@ export function getEdgeNodeUrl(nodeId?: string | null) {
   if (!nodeId) {
     return baseUrl
   }
+
+  if (baseUrl.endsWith("/edge")) {
+    return `${baseUrl.slice(0, -5)}/edge-nodes/${nodeId}`
+  }
+
   return `${baseUrl}/edge-nodes/${nodeId}`
 }
 

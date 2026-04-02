@@ -19,6 +19,14 @@ export async function POST(request: Request) {
     cache: "no-store",
   })
 
-  const payload = await response.json()
+  const text = await response.text()
+  let payload: unknown = { error: text || "request through edge failed" }
+
+  try {
+    payload = text ? JSON.parse(text) : payload
+  } catch {
+    payload = { error: text || `request through edge failed with ${response.status}` }
+  }
+
   return NextResponse.json(payload, { status: response.status })
 }
