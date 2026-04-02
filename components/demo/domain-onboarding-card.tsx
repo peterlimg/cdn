@@ -20,8 +20,6 @@ export function DomainOnboardingCard({ domain }: { domain: DomainRecord }) {
         <DomainReadinessBadge status={domain.status} truthLabel={domain.truthLabel} />
       </div>
 
-      <p className="muted">{displayUiCopy(domain.readinessNote)}</p>
-
 		<div className="list-item stack">
 			<div>
 				<span className="eyebrow">Current status</span>

@@ -2,7 +2,7 @@
 
 - Reset the demo before the meeting.
 - Reseed a ready domain or create one from `/domains/new`.
-- Confirm the zone detail page shows origin, DNS records, readiness contract, and the real proxied asset URL.
+- Confirm the zone detail page shows origin, DNS records, readiness contract, and the real proxied request path URL.
 - Send one baseline request and confirm proof appears.
 - Enable cache and confirm `MISS` then `HIT`.
 - Confirm Rust edge logs and Go API logs both correlate by request ID.

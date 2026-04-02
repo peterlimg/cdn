@@ -18,7 +18,7 @@ export function publishCachePolicy(domainId: string, cacheEnabled: boolean) {
       revision = {
         id: nextRevisionId(domain.revisions),
         cacheEnabled,
-        label: cacheEnabled ? "Edge cache enabled for /assets/demo.css" : "Baseline - origin fetch only",
+        label: cacheEnabled ? "Edge cache enabled for the configured request path" : "Baseline - origin fetch only",
         createdAt: new Date().toISOString(),
       }
 

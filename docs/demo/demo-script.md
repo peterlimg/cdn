@@ -4,7 +4,7 @@
 
 1. Start on `/domains` and explain the runtime split: Next.js dashboard, Go API/control service, and Rust edge service.
 2. Create a `ready` demo domain. Call out that the onboarding UI now creates the control-plane record explicitly, and that `ready` is the demo readiness mode used to allow immediate proof in the pitch.
-3. Open the zone detail page. Point out the explicit config sections: origin target, DNS records, readiness contract, active revision, request route hint, and the real proxied asset check URL.
+3. Open the zone detail page. Point out the explicit config sections: origin target, DNS records, readiness contract, active revision, request route hint, and the real proxied request-path check URL.
 4. Use the **Request proof** tab and send one request through the edge. The first proof should show `BYPASS` under the baseline revision.
 5. Switch briefly to **Go API logs** and explain that the control plane served config and ingested the event for that request.
 6. Enable the cache policy and wait for the edge-apply confirmation banner.

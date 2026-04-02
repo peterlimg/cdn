@@ -10,7 +10,7 @@ const proofs: RequestProof[] = [
     traceId: "trace-1",
     domainId: "zone-1",
     hostname: "ready-demo.northstarcdn.test",
-    path: "/assets/demo.css",
+    path: "/",
     timestamp: "2026-04-01T00:00:00Z",
     revisionId: "rev-2",
     cacheStatus: "MISS",
@@ -69,7 +69,7 @@ describe("evidence tabs", () => {
       <EvidenceTabs
         domainId="zone-1"
         domainStatus="ready"
-        routeHint="/assets/demo.css"
+        routeHint="/"
         initialProofs={proofs}
         initialEdgeLogs={edgeLogs}
         initialApiLogs={apiLogs}

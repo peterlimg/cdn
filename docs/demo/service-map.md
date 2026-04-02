@@ -29,9 +29,9 @@
 
 ## Real proxy route
 
-- The Rust edge now also exposes a real proxied asset route for rehearsal traffic.
-- Through ingress, a presenter can hit `GET /edge/proxy/assets/demo.css?domainId=<zone-id>` and receive the actual response body from the default verification edge.
-- For a specific node, a presenter can hit `GET /edge-nodes/<node-id>/proxy/assets/demo.css?domainId=<zone-id>`.
+- The Rust edge now also exposes a real proxied route for rehearsal traffic.
+- Through ingress, a presenter can hit `GET /edge/proxy/<configured-path>?domainId=<zone-id>` and receive the actual response body from a valid targeted edge.
+- For a specific node, a presenter can hit `GET /edge-nodes/<node-id>/proxy/<configured-path>?domainId=<zone-id>`.
 - The response includes `X-Request-Id`, `X-Trace-Id`, and `X-Cache-Status` headers so the proxied response can still be correlated back to proof and logs.
 
 ## Ingress boundary

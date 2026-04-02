@@ -7,6 +7,7 @@ pub struct RuntimeConfig {
     pub node_id: String,
     pub node_label: String,
     pub node_region: String,
+    pub edge_ingress_url: String,
 }
 
 pub fn load_runtime_config() -> RuntimeConfig {
@@ -18,5 +19,7 @@ pub fn load_runtime_config() -> RuntimeConfig {
         node_id: env::var("EDGE_NODE_ID").unwrap_or_else(|_| "edge-us-east".to_string()),
         node_label: env::var("EDGE_NODE_LABEL").unwrap_or_else(|_| "US East".to_string()),
         node_region: env::var("EDGE_NODE_REGION").unwrap_or_else(|_| "us-east".to_string()),
+        edge_ingress_url: env::var("EDGE_INGRESS_URL")
+            .unwrap_or_else(|_| "http://nginx:8080".to_string()),
     }
 }

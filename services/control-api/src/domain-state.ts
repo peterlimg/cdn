@@ -24,6 +24,8 @@ export function createDomain(input: { hostname: string; mode: "ready" | "pending
     id: `zone-${Math.random().toString(36).slice(2, 8)}`,
     hostname: input.hostname,
     origin: "demo-origin.internal",
+    healthCheckPath: "/",
+    routeHint: "/",
     status: input.mode,
     readinessNote:
       input.mode === "ready"

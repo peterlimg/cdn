@@ -827,6 +827,10 @@ select {
   gap: 16px;
 }
 
+.analytics-shell-compact {
+  gap: 14px;
+}
+
 .analytics-status-panel {
   gap: 10px;
 }
@@ -834,6 +838,10 @@ select {
 .analytics-detail-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.analytics-detail-grid-compact {
+  grid-template-columns: 1fr;
 }
 
 .analytics-detail-panel {
@@ -955,13 +963,6 @@ select {
   gap: 16px;
 }
 
-.zone-detail-hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-  gap: 16px;
-  align-items: start;
-}
-
 .zone-detail-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
@@ -974,9 +975,65 @@ select {
   min-width: 0;
 }
 
+.zone-detail-section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zone-detail-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .zone-detail-analytics-panel {
   position: sticky;
   top: 16px;
+  gap: 14px;
+}
+
+.zone-detail-analytics-panel .analytics-status-panel,
+.zone-detail-analytics-panel .analytics-detail-panel {
+  padding: 18px;
+}
+
+.zone-detail-analytics-panel .kpis {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.zone-detail-analytics-panel .builder-kpi {
+  min-height: 0;
+}
+
+.zone-detail-analytics-panel .kpi-value {
+  font-size: clamp(28px, 4vw, 40px);
+}
+
+.zone-detail-analytics-panel .support-title {
+  font-size: 18px;
+}
+
+.zone-detail-hero-grid .builder-card,
+.zone-detail-primary .builder-card {
+  gap: 14px;
+}
+
+.zone-detail-hero-grid .builder-card h2,
+.zone-detail-hero-grid .builder-card h3,
+.zone-detail-hero-grid .builder-card h4,
+.zone-detail-hero-grid .builder-card p,
+.zone-detail-primary .builder-card h2,
+.zone-detail-primary .builder-card h3,
+.zone-detail-primary .builder-card h4,
+.zone-detail-primary .builder-card p {
+  margin-bottom: 0;
+}
+
+.zone-detail-hero-grid .list-item.stack,
+.zone-detail-primary .builder-list-item {
+  gap: 12px;
 }
 
 .proof-chip-muted {
@@ -1054,7 +1111,6 @@ select {
   .stats-strip-dense,
   .app-workspace,
   .analytics-detail-grid,
-  .zone-detail-hero-grid,
   .zone-detail-main-grid {
     grid-template-columns: 1fr;
   }

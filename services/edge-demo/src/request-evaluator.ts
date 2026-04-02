@@ -19,7 +19,7 @@ export function evaluateRequest(input: { domainId: string; path?: string }) {
     throw new Error("Domain not found")
   }
 
-  const normalized = normalizeRequest({ hostname: domain.hostname, path: input.path ?? "/assets/demo.css" })
+  const normalized = normalizeRequest({ hostname: domain.hostname, path: input.path ?? domain.routeHint ?? domain.healthCheckPath ?? "/" })
   const requestId = nextRequestId()
   const timestamp = new Date().toISOString()
   const activeRevision = domain.revisions.find((revision) => revision.id === domain.appliedRevisionId)

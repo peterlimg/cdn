@@ -94,17 +94,17 @@ That recreates the default ready-domain baseline without using the UI shortcut r
 
 The default domain rate limit is intentionally set above the quota walkthrough so the main demo reliably reaches `BLOCKED_QUOTA` first. To show rate limiting separately, reseed a fresh domain and send more than 10 requests inside one 60-second window.
 
-## Real proxied asset check
+## Real proxied path check
 
-After reseeding a ready domain, you can verify the real edge proxy path directly:
+After reseeding a ready domain, you can verify the real edge proxy path directly. Use the zone's configured request path or health check path instead of assuming a shared demo asset path:
 
 ```bash
-curl -i "http://127.0.0.1:3000/api/proxy-check?domainId=<zone-id>&path=%2Fassets%2Fdemo.css"
+curl -i "http://127.0.0.1:3000/api/proxy-check?domainId=<zone-id>&path=%2F"
 ```
 
 The first request should return `X-Cache-Status: BYPASS` or `MISS` depending on cache policy. A repeated request with cache enabled should return `X-Cache-Status: HIT`.
 
-The same proxied asset URL is now shown in the zone detail page under **Domain configuration** so the presenter does not need to rebuild it manually during a walkthrough. The UI-hosted proxy-check route works both on the direct UI port and through ingress-backed demos.
+The same proxied path URL is shown in the zone detail flow through the configured route hint, so the presenter does not need to rebuild it manually during a walkthrough. The UI-hosted proxy-check route works both on the direct UI port and through ingress-backed demos.
 
 ## Useful logs during local development
 

@@ -26,7 +26,7 @@ const domain: DomainRecord = {
   revisions: [{ id: "rev-2", cacheEnabled: true, label: "Cache enabled", createdAt: "2026-04-01T00:00:00Z" }],
   dnsRecords: [],
   proxyMode: "proxied",
-  routeHint: "/assets/demo.css",
+  routeHint: "/",
   edgePlacement: {
     mode: "subset",
     selectedNodeIds: ["edge-us-east", "edge-eu-west"],
@@ -81,7 +81,7 @@ const proofs: RequestProof[] = [
     traceId: "trace-1",
     domainId: "zone-1",
     hostname: "ready-demo.northstarcdn.test",
-    path: "/assets/demo.css",
+    path: "/",
     timestamp: "2026-04-01T00:00:00Z",
     revisionId: "rev-2",
     cacheStatus: "HIT",

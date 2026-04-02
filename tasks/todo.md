@@ -46,6 +46,8 @@
 - [completed] Implement Units 3-4: multi-edge runtime topology, node identity, and rollout tracking.
 - [completed] Implement Units 5-6: zone-detail rollout visibility and multi-edge demo docs updates.
 - [completed] Run focused tests, full quality checks, and review for the multi-edge targeting feature.
+- [pending] Fix the zone-detail layout regression where the analytics sidebar overflows awkwardly and the setup card stack has an oversized internal gap.
+- [completed] Fix host-based edge browsing on `:8081` so subset-targeted zones route to an eligible edge instead of failing on the default node.
 
 # Lessons
 
@@ -67,6 +69,7 @@
 - Quota percentage tiles now round to a short display format so large decimal values no longer overflow the stat cards.
 - Analytics and zone detail now use denser split-workspace layouts so post-proof confirmation and active zone controls read like one operator surface instead of stacked generic cards.
 - Verification passed with `npm test -- tests/demo/dashboard-flow.test.tsx` and `npm run build`.
+- Host-based browsing on `:8081` no longer assumes the default `edge-us-east` runtime for every zone. Generic traffic now delegates to one of the zone's targeted edge nodes, so subset-targeted zones do not fail with `domain is not targeted to this edge node` just because the ingress default edge is outside the selected scope.
 - Added `docs/plans/2026-04-01-003-feat-multi-edge-pull-zone-targeting-plan.md`, which sequences control-plane placement modeling, multi-edge runtime topology, rollout telemetry, and zone-detail visibility while preserving the repo's onboarding and demo-honesty constraints.
 - Repo research confirmed the app already has the right spine for a real onboarding flow: domain creation, a domain detail workspace, policy revision publishing, request proof, service logs, and analytics summaries.
 - The best extension path is to enrich the shared `DomainRecord` lifecycle and reuse the existing `app/domains/new` -> `app/domains/[domainId]` flow rather than inventing a parallel onboarding system.
@@ -77,3 +80,4 @@
 - Verification passed with `cargo test`, `go test ./...`, `go build ./...`, `npm test`, `npm run build`, and `docker compose config`.
 - Full `docker compose up -d --build` verification now passes after switching the Rust image path to `rustls` TLS and updating the Axum wildcard proxy route to `/{*path}`.
 - Added focused Vitest coverage for the multi-edge zone-detail shell and evidence tab switching so the new rollout and node-attribution UI has direct regression coverage.
+- Investigating zone-detail layout polish after the multi-edge merge: the analytics confirmation panel needs a narrower sidebar treatment, and the stacked setup sections need tighter spacing so the setup flow reads as one continuous block.

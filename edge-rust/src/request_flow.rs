@@ -20,6 +20,10 @@ pub struct DomainRecord {
     pub hostname: String,
     pub origin: String,
     pub status: String,
+    #[serde(rename = "healthCheckPath")]
+    pub health_check_path: Option<String>,
+    #[serde(rename = "routeHint")]
+    pub route_hint: Option<String>,
     #[serde(rename = "rateLimit")]
     pub rate_limit: i32,
     #[serde(rename = "activeRevisionId")]
@@ -46,6 +50,11 @@ pub struct EdgeContext {
     pub quota_limit_bytes: i32,
     #[serde(rename = "rateLimitWindow")]
     pub rate_limit_window: i32,
+}
+
+#[derive(Clone)]
+pub struct DelegateTarget {
+    pub node_id: String,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -156,6 +165,70 @@ pub enum RequestError {
     Upstream(String),
 }
 
+fn resolve_delegate_node_id(target_node_ids: &[String], runtime_node_id: &str) -> Option<String> {
+    target_node_ids.iter().find(|node_id| node_id.as_str() != runtime_node_id).cloned()
+}
+
+fn normalize_request_path(path: &str) -> String {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return "/".to_string();
+    }
+    if trimmed.starts_with('/') {
+        return trimmed.to_string();
+    }
+    format!("/{trimmed}")
+}
+
+fn resolve_request_path(request_path: Option<&str>, domain: &DomainRecord) -> String {
+    if let Some(path) = request_path {
+        return normalize_request_path(path);
+    }
+
+    if let Some(path) = domain.health_check_path.as_deref() {
+        return normalize_request_path(path);
+    }
+
+    if let Some(path) = domain.route_hint.as_deref() {
+        return normalize_request_path(path);
+    }
+
+    "/".to_string()
+}
+
+pub async fn resolve_delegate_target(
+    client: &Client,
+    request: &RequestBody,
+    ingress_request_id: Option<String>,
+) -> Result<Option<DelegateTarget>, RequestError> {
+    if request.target_node_id.is_some() {
+        return Ok(None);
+    }
+
+    let runtime = config::load_runtime_config();
+    let request_id = ingress_request_id.unwrap_or_else(|| format!("req-{}", &Uuid::new_v4().to_string()[..8]));
+    let trace_id = format!("trace-{}", &Uuid::new_v4().to_string()[..8]);
+
+    if request.domain_id.is_none() && request.hostname.is_none() {
+        return Err(RequestError::NotFound("domainId or hostname is required".to_string()));
+    }
+
+    let context = fetch_edge_context(client, request, &runtime, &request_id, &trace_id).await?;
+    if let Some(placement) = context.domain.edge_placement.as_ref() {
+        if !placement.target_node_ids.iter().any(|node_id| node_id == &runtime.node_id) {
+            if let Some(node_id) = resolve_delegate_node_id(&placement.target_node_ids, &runtime.node_id) {
+                return Ok(Some(DelegateTarget {
+                    node_id,
+                }));
+            }
+
+            return Err(RequestError::NotFound("domain is not targeted to this edge node".to_string()));
+        }
+    }
+
+    Ok(None)
+}
+
 impl fmt::Display for RequestError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -178,31 +251,7 @@ pub async fn execute_request(client: &Client, request: RequestBody, ingress_requ
         return Err(RequestError::NotFound("domainId or hostname is required".to_string()));
     }
 
-    let mut edge_context_url = reqwest::Url::parse(&format!("{}/internal/edge-context", runtime.go_api_url))
-        .map_err(|error| RequestError::Upstream(error.to_string()))?;
-    {
-        let mut query = edge_context_url.query_pairs_mut();
-        query.append_pair("requestId", &request_id);
-        query.append_pair("traceId", &trace_id);
-        if let Some(domain_id) = request.domain_id.as_ref() {
-            query.append_pair("domainId", domain_id);
-        }
-        if let Some(hostname) = request.hostname.as_ref() {
-            query.append_pair("hostname", hostname);
-        }
-    }
-
-    let context = client
-        .get(edge_context_url)
-        .header("X-Internal-Token", runtime.internal_api_token.clone().unwrap_or_default())
-        .send()
-        .await
-        .map_err(|error| RequestError::Upstream(error.to_string()))?
-        .error_for_status()
-        .map_err(|error| map_status_error(error, "edge context lookup failed"))?
-        .json::<EdgeContext>()
-        .await
-        .map_err(|error| RequestError::Upstream(error.to_string()))?;
+    let context = fetch_edge_context(client, &request, &runtime, &request_id, &trace_id).await?;
 
     let revision = context
         .domain
@@ -225,7 +274,7 @@ pub async fn execute_request(client: &Client, request: RequestBody, ingress_requ
     }
 
     let timestamp = chrono_like_timestamp();
-    let path = request.path.unwrap_or_else(|| "/assets/demo.css".to_string());
+    let path = resolve_request_path(request.path.as_deref(), &context.domain);
 
     acknowledge_apply(
         client,
@@ -400,6 +449,40 @@ pub async fn execute_request(client: &Client, request: RequestBody, ingress_requ
         .map_err(|error| map_status_error(error, "edge ingest failed"))?;
 
     Ok(EvaluatedRequest { proof, response })
+}
+
+async fn fetch_edge_context(
+    client: &Client,
+    request: &RequestBody,
+    runtime: &config::RuntimeConfig,
+    request_id: &str,
+    trace_id: &str,
+) -> Result<EdgeContext, RequestError> {
+    let mut edge_context_url = reqwest::Url::parse(&format!("{}/internal/edge-context", runtime.go_api_url))
+        .map_err(|error| RequestError::Upstream(error.to_string()))?;
+    {
+        let mut query = edge_context_url.query_pairs_mut();
+        query.append_pair("requestId", request_id);
+        query.append_pair("traceId", trace_id);
+        if let Some(domain_id) = request.domain_id.as_ref() {
+            query.append_pair("domainId", domain_id);
+        }
+        if let Some(hostname) = request.hostname.as_ref() {
+            query.append_pair("hostname", hostname);
+        }
+    }
+
+    client
+        .get(edge_context_url)
+        .header("X-Internal-Token", runtime.internal_api_token.clone().unwrap_or_default())
+        .send()
+        .await
+        .map_err(|error| RequestError::Upstream(error.to_string()))?
+        .error_for_status()
+        .map_err(|error| map_status_error(error, "edge context lookup failed"))?
+        .json::<EdgeContext>()
+        .await
+        .map_err(|error| RequestError::Upstream(error.to_string()))
 }
 
 async fn acknowledge_apply(

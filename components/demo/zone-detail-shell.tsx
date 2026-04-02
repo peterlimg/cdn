@@ -47,21 +47,10 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
         rollout={domain.edgeRollout}
       />
 
-      <div className="grid zone-detail-hero-grid">
-        <DomainOnboardingCard domain={domain} />
-        <div className="stack">
-          <CachePolicyCard
-            domainId={domain.id}
-            cacheEnabled={Boolean(activeRevision?.cacheEnabled)}
-            revisionLabel={activeRevision?.label ?? "Unknown revision"}
-            onChanged={refreshAfterPolicyChange}
-          />
-          <EdgeDeploymentCard placement={domain.edgePlacement} rollout={domain.edgeRollout} />
-        </div>
-      </div>
-
       <div className="grid zone-detail-main-grid">
-        <div className="stack zone-detail-primary">
+        <div className="zone-detail-primary zone-detail-section-stack">
+          <DomainOnboardingCard domain={domain} />
+
           <DomainConfigSections
             domainId={domain.id}
             projectName={domain.projectName}
@@ -92,12 +81,21 @@ export function ZoneDetailShell({ domain, summary, events, edgeLogs, apiLogs }: 
         </div>
 
         <aside className="zone-detail-secondary">
+          <CachePolicyCard
+            domainId={domain.id}
+            cacheEnabled={Boolean(activeRevision?.cacheEnabled)}
+            revisionLabel={activeRevision?.label ?? "Unknown revision"}
+            onChanged={refreshAfterPolicyChange}
+          />
+
+          <EdgeDeploymentCard placement={domain.edgePlacement} rollout={domain.edgeRollout} />
+
           <div className="surface surface-subtle stack builder-subpanel zone-detail-analytics-panel">
             <div>
               <span className="eyebrow">Analytics confirm</span>
               <h3 className="support-title">Post-proof readout</h3>
             </div>
-            <AnalyticsPageShell summary={liveSummary} />
+            <AnalyticsPageShell compact summary={liveSummary} />
           </div>
         </aside>
       </div>

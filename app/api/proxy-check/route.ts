@@ -4,7 +4,7 @@ import { getEdgeNodeUrl } from "../../../lib/demo/service-endpoints"
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const domainId = url.searchParams.get("domainId")
-  const path = url.searchParams.get("path") ?? "/assets/demo.css"
+  const path = url.searchParams.get("path") ?? "/"
   const targetNodeId = url.searchParams.get("targetNodeId")
 
   if (!domainId) {

@@ -5,9 +5,9 @@ import { QuotaStatusCard } from "./quota-status-card"
 import { QuotaThresholdBanner } from "./quota-threshold-banner"
 import type { AnalyticsSummary } from "../../services/shared/src/types"
 
-export function AnalyticsPageShell({ summary }: { summary: AnalyticsSummary }) {
+export function AnalyticsPageShell({ summary, compact = false }: { summary: AnalyticsSummary; compact?: boolean }) {
   return (
-    <div className="grid stack analytics-shell">
+    <div className={`grid stack analytics-shell${compact ? " analytics-shell-compact" : ""}`}>
       <div className="surface surface-subtle stack builder-subpanel analytics-status-panel">
         {summary.freshness === "updating" ? (
           <div className="note">
@@ -27,7 +27,7 @@ export function AnalyticsPageShell({ summary }: { summary: AnalyticsSummary }) {
 
       <AnalyticsSummaryCards summary={summary} />
 
-      <div className="grid analytics-detail-grid">
+      <div className={`grid analytics-detail-grid${compact ? " analytics-detail-grid-compact" : ""}`}>
         <div className="surface surface-subtle stack builder-subpanel analytics-detail-panel">
           <div>
             <span className="eyebrow">Readout</span>
