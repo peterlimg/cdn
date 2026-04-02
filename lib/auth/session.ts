@@ -1,8 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { cookies } from "next/headers"
 
-const SESSION_COOKIE = "northstar_session"
-const SESSION_SECRET = process.env.SESSION_SECRET ?? "northstar-demo-session-secret"
+const SESSION_COOKIE = "unseen_session"
+const SESSION_SECRET = process.env.SESSION_SECRET ?? "unseen-demo-session-secret"
 
 function sign(value: string) {
   return createHmac("sha256", SESSION_SECRET).update(value).digest("hex")

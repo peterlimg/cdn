@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
 
 const domain: DomainRecord = {
   id: "zone-1",
-  hostname: "ready-demo.northstarcdn.test",
+  hostname: "ready-demo.unseencdn.test",
   projectName: "Marketing site",
   origin: "https://static.example.com",
   healthCheckPath: "/",
@@ -80,7 +80,7 @@ const proofs: RequestProof[] = [
     requestId: "req-1",
     traceId: "trace-1",
     domainId: "zone-1",
-    hostname: "ready-demo.northstarcdn.test",
+    hostname: "ready-demo.unseencdn.test",
     path: "/",
     timestamp: "2026-04-01T00:00:00Z",
     revisionId: "rev-2",

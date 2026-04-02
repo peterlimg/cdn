@@ -10,7 +10,7 @@ describe("analytics story", () => {
   })
 
   it("tracks totals and hit ratio from emitted request events", () => {
-    const domain = createDomain({ hostname: "ready-demo.northstarcdn.test", mode: "ready" })
+    const domain = createDomain({ hostname: "ready-demo.unseencdn.test", mode: "ready" })
     publishCachePolicy(domain.id, true)
 
     evaluateRequest({ domainId: domain.id })

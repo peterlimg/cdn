@@ -48,7 +48,7 @@ describe("domains dashboard", () => {
     domains = [
       {
         id: "zone-1",
-        hostname: "ready-site.northstarcdn.test",
+        hostname: "ready-site.unseencdn.test",
         projectName: "Marketing site",
         origin: "demo-origin.internal",
         setupPath: "existing-origin",
@@ -83,7 +83,7 @@ describe("domains dashboard", () => {
 
     render(<DomainsShell snapshot={snapshot} />)
 
-    expect(screen.getByText("ready-site.northstarcdn.test")).toBeInTheDocument()
+    expect(screen.getByText("ready-site.unseencdn.test")).toBeInTheDocument()
     expect(screen.getByText("Ready to activate")).toBeInTheDocument()
     expect(screen.getAllByText("Marketing site")).toHaveLength(2)
     expect(screen.getByText("Every hostname on the edge")).toBeInTheDocument()

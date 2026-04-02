@@ -40,7 +40,7 @@ describe("home page", () => {
       domains: [
         {
           id: "zone-1",
-          hostname: "ready-site.northstarcdn.test",
+          hostname: "ready-site.unseencdn.test",
           projectName: "Marketing site",
           origin: "demo-origin.internal",
           setupPath: "existing-origin",
@@ -63,7 +63,7 @@ describe("home page", () => {
             requestId: "req-1",
             traceId: "trace-1",
             domainId: "zone-1",
-            hostname: "ready-site.northstarcdn.test",
+            hostname: "ready-site.unseencdn.test",
             path: "/",
           timestamp: new Date().toISOString(),
           revisionId: "rev-1",

@@ -4,8 +4,8 @@ export function sanitizeNextPath(value: string | null | undefined) {
   }
 
   try {
-    const url = new URL(value, "http://northstar.local")
-    if (url.origin !== "http://northstar.local") {
+    const url = new URL(value, "http://unseen.local")
+    if (url.origin !== "http://unseen.local") {
       return null
     }
 

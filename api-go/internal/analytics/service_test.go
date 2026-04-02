@@ -46,7 +46,7 @@ func TestInsertRequestEventEncodesQueryAndAppliesAuth(t *testing.T) {
 		RequestID:        "req-1",
 		TraceID:          "trace-1",
 		DomainID:         "zone-1",
-		Hostname:         "ready-demo.northstarcdn.test",
+		Hostname:         "ready-demo.unseencdn.test",
 		Path:             "/assets/demo.css",
 		RevisionID:       "rev-1",
 		CacheStatus:      "HIT",

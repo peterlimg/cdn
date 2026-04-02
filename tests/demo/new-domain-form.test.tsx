@@ -48,7 +48,7 @@ describe("new domain form", () => {
   it("uses the ready hostname by default", () => {
     render(<NewDomainForm edgeNodes={[...edgeNodes]} />)
 
-    expect(screen.getByDisplayValue("ready-site.northstarcdn.test")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("ready-site.unseencdn.test")).toBeInTheDocument()
   })
 
   it("keeps the public-origin defaults in the simplified form", () => {

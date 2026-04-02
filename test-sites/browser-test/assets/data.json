@@ -1,6 +1,6 @@
 {
   "site": "browser-test",
-  "hostname": "browser-test.northstarcdn.test",
+  "hostname": "browser-test.unseencdn.test",
   "theme": "purple",
   "origin_service": "browser-origin",
   "purpose": "qa browser verification origin"

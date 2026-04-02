@@ -1,4 +1,4 @@
-# Northstar CDN demo script
+# Unseen demo script
 
 ## Main walkthrough
 

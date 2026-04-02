@@ -8,7 +8,7 @@ describe("policy publish", () => {
   })
 
   it("publishes a new cache-enabled revision and marks it applied", () => {
-    const domain = createDomain({ hostname: "ready-demo.northstarcdn.test", mode: "ready" })
+    const domain = createDomain({ hostname: "ready-demo.unseencdn.test", mode: "ready" })
     const revision = publishCachePolicy(domain.id, true)
     const updated = getDomain(domain.id)
 
@@ -19,7 +19,7 @@ describe("policy publish", () => {
   })
 
   it("rolls back to the baseline uncached revision", () => {
-    const domain = createDomain({ hostname: "ready-demo.northstarcdn.test", mode: "ready" })
+    const domain = createDomain({ hostname: "ready-demo.unseencdn.test", mode: "ready" })
     publishCachePolicy(domain.id, true)
     const baseline = rollbackCachePolicy(domain.id)
     const updated = getDomain(domain.id)
