@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>Unseen</h1>
+  <h1>Unseen CDN</h1>
   <p><strong>CDN control plane and edge runtime built with Rust, Go, and TypeScript.</strong></p>
   <p>
     Domain onboarding, DNS verification flow, origin health checks, cache policy revisions,
