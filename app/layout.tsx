@@ -7,8 +7,8 @@ import { getSession } from "../lib/auth/session"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Northstar CDN",
-  description: "Northstar CDN control plane and edge workspace",
+  title: "Unseen CDN",
+  description: "Unseen CDN control plane and edge workspace",
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -24,7 +24,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <div className="brand-inline">
                   <div className="brand-block">
                     <Link className="brand-link" href="/">
-                      Northstar CDN
+                      Unseen CDN
                     </Link>
                     <span className="small muted">Pull zones control plane</span>
                   </div>
@@ -45,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             ) : (
               <>
                 <Link className="brand-link" href="/">
-                  Northstar CDN
+                  Unseen CDN
                 </Link>
                 <div className="topbar-actions topbar-actions-marketing">
                   <Link className="button-ghost topbar-link" href={loginPath("/domains")}>

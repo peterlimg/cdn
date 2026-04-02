@@ -6,7 +6,7 @@
   Temporary ingress boundary for local demos. It can terminate TLS later and forwards trusted request context to the Rust edge or dashboard, but it does not own CDN logic.
 
 - `app/` (Next.js / TypeScript)
-  Buyer-facing dashboard UI and thin route proxies.
+  Dashboard UI and thin route proxies.
 
 - `api-go/` (Golang)
   Control-plane authority for domains, policy revisions, analytics summaries, reset flow, and service-log retrieval.
@@ -30,8 +30,8 @@
 ## Real proxy route
 
 - The Rust edge now also exposes a real proxied route for rehearsal traffic.
-- Through ingress, a presenter can hit `GET /edge/proxy/<configured-path>?domainId=<zone-id>` and receive the actual response body from a valid targeted edge.
-- For a specific node, a presenter can hit `GET /edge-nodes/<node-id>/proxy/<configured-path>?domainId=<zone-id>`.
+- Through ingress, you can hit `GET /edge/proxy/<configured-path>?domainId=<zone-id>` and receive the actual response body from a valid targeted edge.
+- For a specific node, you can hit `GET /edge-nodes/<node-id>/proxy/<configured-path>?domainId=<zone-id>`.
 - The response includes `X-Request-Id`, `X-Trace-Id`, and `X-Cache-Status` headers so the proxied response can still be correlated back to proof and logs.
 
 ## Ingress boundary
@@ -46,4 +46,4 @@
 - Edge rollout status: control-plane summary of which targeted nodes have acknowledged the active revision.
 - Rust edge logs: why the edge made the request decision.
 - Go API logs: why the control plane participated in config lookup, rate limiting, ingest, and analytics behavior.
-- Analytics: buyer-facing confirmation layer derived from the service-backed event stream.
+- Analytics: confirmation layer derived from the service-backed event stream.

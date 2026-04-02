@@ -11,7 +11,7 @@ deepened: 2026-03-31
 
 ## Overview
 
-Evolve the current CDN client demo into a more stack-aligned prototype that matches the intended product shape while preserving the existing buyer-facing proof loop. The target runtime split is:
+Evolve the current CDN demo into a more stack-aligned prototype that matches the intended product shape while preserving the existing proof loop. The target runtime split is:
 
 - Rust for the edge proxy, cache, WAF, and request pipeline
 - Go for the control plane, APIs, and supporting services
@@ -34,7 +34,7 @@ The current demo already proves an important architecture split: TypeScript UI, 
 4. There is no Nginx layer, no PostgreSQL, no Redis, no ClickHouse, and no Docker packaging.
 5. The current request proof loop is strong, but it can easily be weakened if new infrastructure is added without preserving evidence clarity and precedence rules.
 
-This next step matters because the client is evaluating long-term technical credibility. They want to see not only that the architecture split exists, but that the system is evolving in the right sequence: a real edge path in Rust, a real control plane in Go, durable state where it belongs, analytics in the right store, and packaging that another engineer can run. The plan should therefore optimize for staged realism, not for maximum component count on day one.
+This next step matters because the review is evaluating long-term technical credibility. They want to see not only that the architecture split exists, but that the system is evolving in the right sequence: a real edge path in Rust, a real control plane in Go, durable state where it belongs, analytics in the right store, and packaging that another engineer can run. The plan should therefore optimize for staged realism, not for maximum component count on day one.
 
 ## Foundational Context
 
@@ -58,20 +58,20 @@ The resulting system should have these responsibilities:
 - **Go control plane** owns domain onboarding, policy revisions, config publication, admin APIs, evidence retrieval APIs, and summary APIs.
 - **PostgreSQL** becomes the source of truth for domains, origins, revisions, and durable control-plane state.
 - **Redis** becomes the fast-path store for counters, rate limits, and short-lived coordination state.
-- **ClickHouse** becomes the analytics/event store used for buyer-facing summaries and history.
-- **Next.js** remains the buyer-facing dashboard and should continue to surface the same proof, logs, and analytics story with clearer backing systems.
+- **ClickHouse** becomes the analytics/event store used for user-facing summaries and history.
+- **Next.js** remains the dashboard and should continue to surface the same proof, logs, and analytics story with clearer backing systems.
 - **Docker Compose** becomes the primary repeatable local deployment path for rehearsals and demos.
 
-The plan intentionally stages these changes so the system remains demonstrable throughout. The first invariant is that the existing buyer-visible cache proof loop must continue to work after each phase.
+The plan intentionally stages these changes so the system remains demonstrable throughout. The first invariant is that the existing visible cache proof loop must continue to work after each phase.
 
 ## Problem Frame
 
-This plan is not "replace the demo with the final architecture." It is "move the demo toward the final architecture in a way that improves technical credibility without losing the sales-quality walkthrough."
+This plan is not "replace the demo with the final architecture." It is "move the demo toward the final architecture in a way that improves technical credibility without losing the polished walkthrough."
 
 That means the plan must balance two truths:
 
 - The architecture should become more real in the right places.
-- The buyer-facing experience must stay simpler than the infrastructure behind it.
+- The user-facing experience must stay simpler than the infrastructure behind it.
 
 If the implementation becomes a many-service lab that weakens the proof loop, the plan fails even if the stack looks more impressive.
 
@@ -81,10 +81,10 @@ If the implementation becomes a many-service lab that weakens the proof loop, th
 - R2. Move the request path toward a real Rust edge proxy/cache/WAF pipeline.
 - R3. Move control-plane truth into Go backed by PostgreSQL.
 - R4. Introduce Redis only for ephemeral fast-path state such as counters and rate limits, not as a source of truth.
-- R5. Introduce ClickHouse for analytics/event ingest and buyer-facing summaries.
+- R5. Introduce ClickHouse for analytics/event ingest and user-facing summaries.
 - R6. Introduce Nginx in a narrowly defined role as a temporary public edge, TLS terminator, or internal proxy.
 - R7. Package the full local demo stack with Docker Compose.
-- R8. Keep the onboarding, proof, logs, and analytics surfaces understandable to a buyer.
+- R8. Keep the onboarding, proof, logs, and analytics surfaces understandable in review.
 - R9. Keep the demo honest about what is live now versus future architecture.
 - R10. Define explicit request precedence, activation, and truth-boundary rules so evidence remains consistent.
 
@@ -95,7 +95,7 @@ If the implementation becomes a many-service lab that weakens the proof loop, th
 - Non-goal: enterprise WAF catalog, bot protection, DDoS mitigation, or advanced origin shielding.
 - Non-goal: Kubernetes or production orchestration; Docker Compose is sufficient for this phase.
 - Non-goal: turning the dashboard into a generic ops console.
-- Non-goal: replacing the current buyer-facing proof loop with low-level infrastructure diagnostics.
+- Non-goal: replacing the current proof loop with low-level infrastructure diagnostics.
 
 ## Local Research Summary
 
@@ -145,7 +145,7 @@ If the implementation becomes a many-service lab that weakens the proof loop, th
 - Keep the current architecture split and evolve it, rather than introducing a separate second prototype. The repo already has the correct language boundaries; the plan should deepen them.
 - PostgreSQL becomes the durable source of truth for domain, origin, onboarding, revision, and publication state. Go owns all writes to that state.
 - Redis is strictly for fast-path ephemeral state such as rate limits, request counters, and temporary edge coordination. It does not own durable config or authoritative analytics.
-- ClickHouse stores edge events and derived analytics data. Buyer-facing analytics should be served through Go APIs backed by ClickHouse, not directly from the browser.
+- ClickHouse stores edge events and derived analytics data. User-facing analytics should be served through Go APIs backed by ClickHouse, not directly from the browser.
 - Nginx stays temporary and narrow. Its role must be explicit in docs and demo copy so it is not mistaken for the final CDN logic layer.
 - Rust should continue to own the request path and should gradually move from edge-style evaluation to real reverse proxy behavior. When proxy fidelity or streaming matters, the long-term center of gravity should be `hyper`/`hyper-util`, even if `axum` remains useful for auxiliary endpoints.
 - The dashboard should keep proof and logs primary, with analytics as confirmation. Adding ClickHouse must not invert that truth boundary.
@@ -156,7 +156,7 @@ If the implementation becomes a many-service lab that weakens the proof loop, th
 
 The specification analysis surfaced several gaps that this plan explicitly resolves:
 
-- Define whether Nginx is buyer-visible or only infrastructure support.
+- Define whether Nginx is visible or only infrastructure support.
 - Define request precedence across pending, WAF, rate limit, quota, bypass, miss, and hit.
 - Define what blocked requests count toward in quota, rate limits, and analytics.
 - Define revision activation points and how mixed revisions are handled during publication.
@@ -233,7 +233,7 @@ This ordering must be treated as an invariant. Proof panels, logs, counters, and
 - Cache outcome summary
 - Block outcome summary
 - Quota usage summary
-- Buyer-facing aggregate tables or materialized summaries
+- User-facing aggregate tables or materialized summaries
 
 ```mermaid
 erDiagram
@@ -305,7 +305,7 @@ Initial verified Unit 6 slice is now in place. ClickHouse is part of Compose, Go
 
 ### Phase 5: Upgrade Rust into a Real Edge Proxy/Cache Pipeline
 
-**Goal:** Move from synthetic request evaluation to actual reverse-proxy behavior while preserving buyer clarity.
+**Goal:** Move from synthetic request evaluation to actual reverse-proxy behavior while preserving evidence clarity.
 
 **Deliverables:**
 
@@ -330,7 +330,7 @@ Initial verified Unit 6 slice is now in place. ClickHouse is part of Compose, Go
 
 **Why sixth:** Analytics can lag slightly without breaking the request proof story, so this can follow the more critical request-path and state work.
 
-### Phase 7: Reconcile Buyer-Facing Surfaces and Demo Ops
+### Phase 7: Reconcile User-Facing Surfaces and Demo Ops
 
 **Goal:** Ensure the dashboard, demo script, runbook, and evidence surfaces still tell one clear story after the stack evolution.
 
@@ -345,7 +345,7 @@ Initial verified Unit 6 slice is now in place. ClickHouse is part of Compose, Go
 
 - [x] **Unit 1: Externalize service configuration and package the current stack**
 
-**Goal:** Make the current system container-safe and portable without changing its buyer-visible behavior.
+**Goal:** Make the current system container-safe and portable without changing its visible behavior.
 
 **Requirements:** R1, R7, R8, R9
 
@@ -395,7 +395,7 @@ Initial verified Unit 6 slice is now in place. ClickHouse is part of Compose, Go
 - Terminate TLS or simulate the public edge in Nginx.
 - Forward only trusted edge context to Rust.
 - Define whether request IDs originate in Nginx or Rust, and document it.
-- Keep Nginx out of the buyer-facing CDN logic story except where it explains ingress and TLS.
+- Keep Nginx out of the user-facing CDN logic story except where it explains ingress and TLS.
 
 **Test scenarios:**
 - Happy path: requests enter through Nginx and still produce Rust proof/log outcomes.
@@ -459,10 +459,10 @@ Initial verified Unit 6 slice is now in place. ClickHouse is part of Compose, Go
 **Approach:**
 - Use Redis for rate-limit windows and fast counters.
 - Define explicitly whether blocked requests count toward quota, rate limits, and analytics.
-- Keep Go responsible for configuration and buyer-facing summary APIs.
+- Keep Go responsible for configuration and user-facing summary APIs.
 
 **Test scenarios:**
-- Happy path: repeated requests increment counters and can trigger a buyer-visible limit state.
+- Happy path: repeated requests increment counters and can trigger a visible limit state.
 - Edge case: rate-limited requests do not create contradictory cache or quota outcomes.
 - Error path: Redis unavailability degrades honestly and predictably.
 - Integration: proof, logs, and analytics reflect the same counter-driven outcome categories.
@@ -492,7 +492,7 @@ Initial verified Unit 6 slice is now in place. ClickHouse is part of Compose, Go
 - Accept real HTTP requests, not only synthetic request payloads.
 - Implement explicit request normalization, cache eligibility, cache lookup, origin fetch, response handling, and event emission.
 - Add one narrow WAF rule path on actual requests.
-- Keep the buyer-facing proof surface compact even as the edge becomes more real.
+- Keep the proof surface compact even as the edge becomes more real.
 
 **Test scenarios:**
 - Happy path: first request is a miss, second identical request is a hit on real proxied traffic.
@@ -504,7 +504,7 @@ Initial verified Unit 6 slice is now in place. ClickHouse is part of Compose, Go
 **Verification:**
 - The Rust service is now a basic but credible edge proxy/cache/WAF pipeline.
 
-**Progress note:** Initial verified Unit 5 slice is now in place and has been extended three times. Rust fetches the configured origin path over real HTTP on bypass and miss paths, caches response bodies and metadata locally, emits bounded `ORIGIN_ERROR` and `BLOCKED_WAF` proof states, returns non-200 status codes for edge failures, verifies Go ingest success before treating evidence as accepted, serves a real proxied route at `/edge/proxy/<configured-path>?domainId=<zone-id>` with `X-Request-Id`, `X-Trace-Id`, and `X-Cache-Status` headers for direct edge rehearsal traffic, has direct Rust-side tests covering cache round-trip plus proxy response status/header/body behavior, surfaces the exact proxied rehearsal URL in the zone detail UI so presenters can exercise the real edge path without reconstructing the route manually, now matches the documented precedence order by evaluating rate limits before quota blocks, and has been made Compose-safe by switching the edge HTTP client to `rustls` and updating the Axum wildcard proxy route syntax.
+**Progress note:** Initial verified Unit 5 slice is now in place and has been extended three times. Rust fetches the configured origin path over real HTTP on bypass and miss paths, caches response bodies and metadata locally, emits bounded `ORIGIN_ERROR` and `BLOCKED_WAF` proof states, returns non-200 status codes for edge failures, verifies Go ingest success before treating evidence as accepted, serves a real proxied route at `/edge/proxy/<configured-path>?domainId=<zone-id>` with `X-Request-Id`, `X-Trace-Id`, and `X-Cache-Status` headers for direct edge rehearsal traffic, has direct Rust-side tests covering cache round-trip plus proxy response status/header/body behavior, surfaces the exact proxied rehearsal URL in the zone detail UI so reviewers can exercise the real edge path without reconstructing the route manually, now matches the documented precedence order by evaluating rate limits before quota blocks, and has been made Compose-safe by switching the edge HTTP client to `rustls` and updating the Axum wildcard proxy route syntax.
 
 - [x] **Unit 6: Move analytics and event storage to ClickHouse**
 
@@ -537,9 +537,9 @@ Initial verified Unit 6 slice is now in place. ClickHouse is part of Compose, Go
 **Verification:**
 - Analytics become architecture-aligned while preserving the existing evidence hierarchy.
 
-**Progress note:** ClickHouse-backed request-event storage and Go-served summary queries are now wired into the stack with explicit freshness semantics, reset support, and bounded health behavior. The earlier replay-on-read recovery path was removed because it could duplicate append-only analytics rows after partial outages. The control plane now treats any failed ClickHouse ingest as a degraded analytics state, falls back to PostgreSQL-backed local summaries for buyer-facing numbers, and stays degraded until an explicit reset/reseed re-establishes a trustworthy baseline.
+**Progress note:** ClickHouse-backed request-event storage and Go-served summary queries are now wired into the stack with explicit freshness semantics, reset support, and bounded health behavior. The earlier replay-on-read recovery path was removed because it could duplicate append-only analytics rows after partial outages. The control plane now treats any failed ClickHouse ingest as a degraded analytics state, falls back to PostgreSQL-backed local summaries for user-facing numbers, and stays degraded until an explicit reset/reseed re-establishes a trustworthy baseline.
 
-- [x] **Unit 7: Reconcile buyer-facing UX, docs, and demo operations**
+- [x] **Unit 7: Reconcile user-facing UX, docs, and demo operations**
 
 **Goal:** Keep the evolved system understandable and presentation-safe.
 
@@ -561,17 +561,17 @@ Initial verified Unit 6 slice is now in place. ClickHouse is part of Compose, Go
 
 **Approach:**
 - Refine onboarding to match the more durable control-plane flow.
-- Keep proof, logs, and analytics legible to a buyer.
-- Update presenter guidance to explain what Nginx, PostgreSQL, Redis, and ClickHouse add without dragging the presentation into low-level operations.
+- Keep proof, logs, and analytics legible in review.
+- Update operations guidance to explain what Nginx, PostgreSQL, Redis, and ClickHouse add without dragging the presentation into low-level operations.
 
 **Test scenarios:**
-- Happy path: a presenter can onboard or select a domain, change policy, send traffic, and explain the evidence confidently.
+- Happy path: a reviewer can onboard or select a domain, change policy, send traffic, and explain the evidence confidently.
 - Edge case: delayed analytics or degraded infrastructure have a documented fallback narrative.
-- Error path: service-specific failures do not cause the presenter to overclaim or improvise inaccurately.
+- Error path: service-specific failures do not cause the docs to overclaim or improvise inaccurately.
 - Integration: docs and UI tell the same truth about the architecture.
 
 **Verification:**
-- The evolved prototype remains a sales-quality demo rather than only an engineering lab.
+- The evolved prototype remains a polished demo rather than only an engineering lab.
 
 ## Alternative Approaches Considered
 
@@ -585,7 +585,7 @@ Rejected because it introduces too much integration risk at once and is likely t
 
 ### 3. Move analytics before the real edge pipeline
 
-Rejected because the immediate buyer value still depends more on the request path than on analytics backend sophistication.
+Rejected because the immediate product value still depends more on the request path than on analytics backend sophistication.
 
 ### 4. Use Nginx as the long-term edge logic layer
 
@@ -600,7 +600,7 @@ Rejected because it conflicts with the explicit architecture direction that Rust
 - [x] Go persists control-plane state in PostgreSQL.
 - [x] Rust enforces a documented request precedence order.
 - [x] Nginx forwards trusted ingress traffic without becoming the CDN logic layer.
-- [x] Redis-backed counters can drive at least one buyer-visible enforcement path.
+- [x] Redis-backed counters can drive at least one visible enforcement path.
 - [x] ClickHouse-backed analytics are available through Go summary APIs.
 - [x] Request proof, edge logs, API logs, and analytics correlate by stable request or trace IDs.
 
@@ -614,14 +614,14 @@ Rejected because it conflicts with the explicit architecture direction that Rust
 ### Quality Gates
 
 - [x] Each phase preserves the current cache proof loop before the next phase begins.
-- [x] Request precedence is documented in code-facing docs and presenter docs.
+- [x] Request precedence is documented in code-facing docs and operations docs.
 - [x] Failure modes for PostgreSQL, Redis, ClickHouse, and Nginx are represented as bounded demo states.
 - [x] Documentation is updated for service map, runbook, evidence interpretation, and claim guardrails.
 
 ## Success Metrics
 
 - Another engineer can run the stack with Docker Compose and follow the runbook without private context.
-- A technical buyer can identify the role of Rust, Go, TypeScript, Nginx, PostgreSQL, Redis, ClickHouse, and Docker from the product and documentation surfaces.
+- A technical reviewer can identify the role of Rust, Go, TypeScript, Nginx, PostgreSQL, Redis, ClickHouse, and Docker from the product and documentation surfaces.
 - The main demo still shows a convincing `config -> edge outcome -> evidence -> analytics` story.
 - The architecture story becomes more credible without making the presentation harder to follow.
 
@@ -637,13 +637,13 @@ Rejected because it conflicts with the explicit architecture direction that Rust
 | Risk | Mitigation |
 |------|------------|
 | New infrastructure breaks the existing proof loop | Phase the work and require the current cache proof to pass after each stage |
-| The stack becomes more impressive but less understandable | Keep proof and logs primary, and move deeper infrastructure detail into docs and presenter notes |
+| The stack becomes more impressive but less understandable | Keep proof and logs primary, and move deeper infrastructure detail into docs and operations notes |
 | Contract drift appears across TypeScript, Go, and Rust | Treat shared request/policy/proof fields as a first-class contract and update all three runtimes together |
 | Redis is misused as a source of truth | Restrict Redis to counters and ephemeral state only |
 | ClickHouse introduces analytics lag that looks like inconsistency | Keep analytics explicitly derived-with-lag and rely on proof/logs as immediate truth |
 | Nginx muddies the architecture story | Document it as temporary ingress/TLS infra rather than the long-term edge logic layer |
 | PostgreSQL migration destabilizes demo setup | Add reset/reseed tools and keep APIs stable while swapping storage underneath |
-| Rust proxy behavior becomes much more complex than the UI story | Keep the UI compact and expose only the buyer-relevant evidence fields |
+| Rust proxy behavior becomes much more complex than the UI story | Keep the UI compact and expose only the relevant evidence fields |
 
 ## Resource Requirements
 

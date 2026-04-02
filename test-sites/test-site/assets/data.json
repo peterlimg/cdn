@@ -1,6 +1,6 @@
 {
   "site": "customer-test",
-  "hostname": "test.northstarcdn.test",
+  "hostname": "test.unseencdn.test",
   "theme": "green",
   "origin_service": "test-origin-site",
   "purpose": "customer staging origin"
