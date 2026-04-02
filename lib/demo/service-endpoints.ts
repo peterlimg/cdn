@@ -17,3 +17,24 @@ export function getInternalApiToken() {
 export function getUiPort() {
   return process.env["PORT"] ?? "3000"
 }
+
+export function getEdgeNodeUrl(nodeId?: string | null) {
+  const baseUrl = getRustEdgeUrl().replace(/\/$/, "")
+  if (!nodeId) {
+    return baseUrl
+  }
+
+  if (baseUrl.endsWith("/edge")) {
+    return `${baseUrl.slice(0, -5)}/edge-nodes/${nodeId}`
+  }
+
+  return `${baseUrl}/edge-nodes/${nodeId}`
+}
+
+export function getEdgeResetUrls() {
+  return [
+    getEdgeNodeUrl("edge-us-east"),
+    getEdgeNodeUrl("edge-eu-west"),
+    getEdgeNodeUrl("edge-ap-south"),
+  ]
+}

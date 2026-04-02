@@ -26,6 +26,7 @@ export function ApiLogPanel({ logs }: { logs: ServiceLog[] }) {
                 <span>Request: {log.requestId}</span>
                 <span>Trace: {log.traceId}</span>
                 <span>Revision: {log.revisionId}</span>
+                <span>Node: {log.nodeLabel ?? log.nodeId ?? "n/a"}</span>
                 <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
               </div>
               <p className="small" style={{ marginBottom: 0 }}>{log.message}</p>

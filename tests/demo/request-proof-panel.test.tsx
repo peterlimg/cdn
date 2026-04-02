@@ -33,8 +33,25 @@ describe("request proof panel", () => {
             quotaUsedBytes: 128,
             quotaLimitBytes: 1000,
             message: "served via miss",
+            servedByNodeId: "edge-us-east",
+            servedByNodeLabel: "US East",
+            servedByRegion: "us-east",
           },
         ]}
+        rollout={{
+          status: "pending",
+          targetNodeCount: 1,
+          pendingNodeCount: 1,
+          appliedNodeCount: 0,
+          failedNodeCount: 0,
+          nodes: [{
+            nodeId: "edge-us-east",
+            label: "US East",
+            region: "us-east",
+            verificationPath: "/edge-nodes/edge-us-east",
+            status: "pending",
+          }],
+        }}
         isPending={false}
         onSendRequest={() => {}}
       />,
@@ -42,5 +59,7 @@ describe("request proof panel", () => {
 
     expect(screen.getByText("req-123")).toBeInTheDocument()
     expect(screen.getByText(/served via miss/i)).toBeInTheDocument()
+		expect(screen.getByText(/Served by: US East/)).toBeInTheDocument()
+		expect(screen.getByText("Verify US East")).toBeInTheDocument()
   })
 })

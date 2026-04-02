@@ -87,6 +87,7 @@ async fn handle_proxy_request(
             domain_id: query.domain_id,
             hostname,
             path: Some(format!("/{path}")),
+            target_node_id: None,
         },
         request_id,
     )
@@ -178,6 +179,11 @@ mod tests {
             quota_used_bytes: 18,
             quota_limit_bytes: 150000,
             message: message.to_string(),
+            request_scope: Some("generic".to_string()),
+            target_node_id: None,
+            served_by_node_id: Some("edge-us-east".to_string()),
+            served_by_node_label: Some("US East".to_string()),
+            served_by_region: Some("us-east".to_string()),
         }
     }
 

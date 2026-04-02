@@ -81,6 +81,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("/dashboard", s.handleDashboard)
+	mux.HandleFunc("/edge-nodes", s.handleEdgeNodes)
 	mux.HandleFunc("/domains", s.handleDomains)
 	mux.HandleFunc("/domains/", s.handleDomainByID)
 	mux.HandleFunc("/policy", s.handlePolicy)
@@ -89,8 +90,17 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/proofs", s.handleProofs)
 	mux.HandleFunc("/reset", s.handleReset)
 	mux.HandleFunc("/internal/edge-context", s.handleEdgeContext)
+	mux.HandleFunc("/internal/edge-apply", s.handleEdgeApply)
 	mux.HandleFunc("/internal/edge-ingest", s.handleEdgeIngest)
 	mux.HandleFunc("/internal/rate-limit", s.handleRateLimit)
+}
+
+func (s *Server) handleEdgeNodes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, http.StatusOK, s.store.EdgeNodes())
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -104,27 +114,35 @@ func (s *Server) handleDomains(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, s.store.ListDomains())
 	case http.MethodPost:
 		var body struct {
-			Hostname        string `json:"hostname"`
-			Mode            string `json:"mode"`
-			ProjectName     string `json:"projectName"`
-			Origin          string `json:"origin"`
-			HealthCheckPath string `json:"healthCheckPath"`
-			SetupPath       string `json:"setupPath"`
+			Hostname            string   `json:"hostname"`
+			Mode                string   `json:"mode"`
+			ProjectName         string   `json:"projectName"`
+			Origin              string   `json:"origin"`
+			HealthCheckPath     string   `json:"healthCheckPath"`
+			SetupPath           string   `json:"setupPath"`
+			EdgePlacementMode   string   `json:"edgePlacementMode"`
+			EdgeSelectedNodeIDs []string `json:"edgeSelectedNodeIds"`
 		}
 		if err := decode(r, &body); err != nil || body.Hostname == "" || (body.Mode != "ready" && body.Mode != "pending") {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "hostname and mode are required"})
 			return
 		}
 		domain, err := s.store.CreateDomain(state.CreateDomainInput{
-			Hostname:        body.Hostname,
-			Mode:            body.Mode,
-			ProjectName:     body.ProjectName,
-			Origin:          body.Origin,
-			HealthCheckPath: body.HealthCheckPath,
-			SetupPath:       body.SetupPath,
+			Hostname:            body.Hostname,
+			Mode:                body.Mode,
+			ProjectName:         body.ProjectName,
+			Origin:              body.Origin,
+			HealthCheckPath:     body.HealthCheckPath,
+			SetupPath:           body.SetupPath,
+			EdgePlacementMode:   body.EdgePlacementMode,
+			EdgeSelectedNodeIDs: body.EdgeSelectedNodeIDs,
 		})
 		if err != nil {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+			status := http.StatusConflict
+			if strings.Contains(err.Error(), "edge node") || strings.Contains(err.Error(), "select at least one") {
+				status = http.StatusBadRequest
+			}
+			writeJSON(w, status, map[string]string{"error": err.Error()})
 			return
 		}
 		writeJSON(w, http.StatusOK, domain)
@@ -335,6 +353,30 @@ func (s *Server) handleEdgeIngest(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.store.IngestEdgeEvent(payload); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "edge ingest persist failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (s *Server) handleEdgeApply(w http.ResponseWriter, r *http.Request) {
+	if !s.requireInternalAuth(w, r) {
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var ack state.EdgeApplyAcknowledgement
+	if err := decode(r, &ack); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid edge apply payload"})
+		return
+	}
+	if err := s.store.RecordEdgeApply(ack); err != nil {
+		status := http.StatusBadRequest
+		if err.Error() == "domain not found" {
+			status = http.StatusNotFound
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

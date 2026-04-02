@@ -4,12 +4,13 @@ import React, { useEffect, useState, useTransition } from "react"
 import { ApiLogPanel } from "./api-log-panel"
 import { EdgeLogPanel } from "./edge-log-panel"
 import { RequestProofPanel } from "./request-proof-panel"
-import type { RequestProof, ServiceLog } from "../../services/shared/src/types"
+import type { EdgeRollout, RequestProof, ServiceLog } from "../../services/shared/src/types"
 
 type Props = {
   domainId: string
   domainStatus: "ready" | "pending"
   routeHint?: string
+  rollout?: EdgeRollout
   initialProofs: RequestProof[]
   initialEdgeLogs: ServiceLog[]
   initialApiLogs: ServiceLog[]
@@ -20,6 +21,7 @@ export function EvidenceTabs({
   domainId,
   domainStatus,
   routeHint,
+  rollout,
   initialProofs,
   initialEdgeLogs,
   initialApiLogs,
@@ -49,12 +51,12 @@ export function EvidenceTabs({
     setLatestProof(initialProofs[0] ?? null)
   }, [initialProofs])
 
-  async function sendRequest() {
+  async function sendRequest(targetNodeId?: string) {
     setRequestError(null)
     const response = await fetch("/api/request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ domainId, path: routeHint || "/" }),
+      body: JSON.stringify({ domainId, path: routeHint || "/", targetNodeId }),
     })
     const payload = (await response.json()) as RequestProof | { error?: string }
     if (!response.ok) {
@@ -92,10 +94,11 @@ export function EvidenceTabs({
         <RequestProofPanel
           domainStatus={domainStatus}
           proofs={proofs}
+          rollout={rollout}
           isPending={isPending}
           error={requestError}
-          onSendRequest={() => startTransition(() => {
-            void sendRequest()
+          onSendRequest={(targetNodeId) => startTransition(() => {
+            void sendRequest(targetNodeId)
           })}
         />
       ) : null}

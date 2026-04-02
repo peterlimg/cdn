@@ -43,7 +43,11 @@ services:
     depends_on:
       ui:
         condition: service_healthy
-      edge:
+      edge-us-east:
+        condition: service_healthy
+      edge-eu-west:
+        condition: service_healthy
+      edge-ap-south:
         condition: service_healthy
     ports:
       - "8080:8080"
@@ -81,13 +85,16 @@ services:
       timeout: 3s
       retries: 10
 
-  edge:
+  edge-us-east:
     build:
       context: ./edge-rust
     environment:
       HOST: 0.0.0.0
       PORT: "4002"
       GO_API_URL: http://api:4001
+      EDGE_NODE_ID: edge-us-east
+      EDGE_NODE_LABEL: US East
+      EDGE_NODE_REGION: us-east
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in your environment}
     depends_on:
       api:
@@ -97,6 +104,47 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  edge-eu-west:
+    build:
+      context: ./edge-rust
+    environment:
+      HOST: 0.0.0.0
+      PORT: "4003"
+      GO_API_URL: http://api:4001
+      EDGE_NODE_ID: edge-eu-west
+      EDGE_NODE_LABEL: EU West
+      EDGE_NODE_REGION: eu-west
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in your environment}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4003/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  edge-ap-south:
+    build:
+      context: ./edge-rust
+    environment:
+      HOST: 0.0.0.0
+      PORT: "4004"
+      GO_API_URL: http://api:4001
+      EDGE_NODE_ID: edge-ap-south
+      EDGE_NODE_LABEL: AP South
+      EDGE_NODE_REGION: ap-south
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in your environment}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4004/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   ui:
     build:
       context: .
@@ -110,7 +158,11 @@ services:
     depends_on:
       api:
         condition: service_healthy
-      edge:
+      edge-us-east:
+        condition: service_healthy
+      edge-eu-west:
+        condition: service_healthy
+      edge-ap-south:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000"]

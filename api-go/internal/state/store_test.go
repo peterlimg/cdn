@@ -460,3 +460,170 @@ func TestGetDomainByHostnameReturnsErrorForAmbiguousMatches(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestCreateDomainDefaultsToAllEligibleEdgePlacement(t *testing.T) {
+	store := NewStore(nil, nil)
+	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "ready-demo.northstarcdn.test", Mode: string(DomainReady)})
+	if err != nil {
+		fatalf := t.Fatalf
+		fatalf("create domain: %v", err)
+	}
+
+	if domain.EdgePlacement.Mode != EdgePlacementAllEligible {
+		t.Fatalf("expected all-eligible placement, got %q", domain.EdgePlacement.Mode)
+	}
+	if len(domain.EdgePlacement.TargetNodeIDs) != len(store.edgeTopology) {
+		t.Fatalf("expected all topology nodes to be targeted, got %d", len(domain.EdgePlacement.TargetNodeIDs))
+	}
+	if domain.EdgeRollout.TargetNodeCount != len(store.edgeTopology) {
+		t.Fatalf("expected rollout target count to match topology, got %d", domain.EdgeRollout.TargetNodeCount)
+	}
+	if domain.AppliedRevision != domain.Revisions[0].ID {
+		t.Fatalf("expected applied revision to stay at baseline before any acknowledgements, got %q", domain.AppliedRevision)
+	}
+	if domain.EdgePlacement.Summary == "" {
+		t.Fatal("expected placement summary")
+	}
+}
+
+func TestCreateDomainSubsetPlacementDeduplicatesSelection(t *testing.T) {
+	store := NewStore(nil, nil)
+	domain, err := store.CreateDomain(CreateDomainInput{
+		Hostname:            "subset-demo.northstarcdn.test",
+		Mode:                string(DomainReady),
+		EdgePlacementMode:   string(EdgePlacementSubset),
+		EdgeSelectedNodeIDs: []string{"edge-us-east", "edge-us-east", "edge-eu-west"},
+	})
+	if err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
+
+	if len(domain.EdgePlacement.SelectedNodeIDs) != 2 {
+		t.Fatalf("expected duplicate node IDs to be removed, got %v", domain.EdgePlacement.SelectedNodeIDs)
+	}
+	if len(domain.EdgePlacement.TargetNodeIDs) != 2 {
+		t.Fatalf("expected two target nodes, got %v", domain.EdgePlacement.TargetNodeIDs)
+	}
+	if domain.EdgeRollout.TargetNodeCount != 2 {
+		t.Fatalf("expected rollout target count of 2, got %d", domain.EdgeRollout.TargetNodeCount)
+	}
+}
+
+func TestCreateDomainRejectsUnknownEdgeNode(t *testing.T) {
+	store := NewStore(nil, nil)
+	_, err := store.CreateDomain(CreateDomainInput{
+		Hostname:            "invalid-demo.northstarcdn.test",
+		Mode:                string(DomainReady),
+		EdgePlacementMode:   string(EdgePlacementSubset),
+		EdgeSelectedNodeIDs: []string{"edge-us-east", "edge-unknown"},
+	})
+	if err == nil {
+		t.Fatal("expected invalid edge node selection to fail")
+	}
+	if err.Error() != "selected edge node is not available" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCreateDomainRejectsEmptySubsetSelection(t *testing.T) {
+	store := NewStore(nil, nil)
+	_, err := store.CreateDomain(CreateDomainInput{
+		Hostname:          "empty-subset-demo.northstarcdn.test",
+		Mode:              string(DomainReady),
+		EdgePlacementMode: string(EdgePlacementSubset),
+	})
+	if err == nil {
+		t.Fatal("expected empty subset selection to fail")
+	}
+	if err.Error() != "select at least one edge node" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestGetDomainBackfillsLegacyPlacementFromTopology(t *testing.T) {
+	store := NewStore(nil, nil)
+	store.domains["zone-legacy"] = DomainRecord{
+		ID:             "zone-legacy",
+		Hostname:       "legacy-demo.northstarcdn.test",
+		Origin:         "https://static.example.com",
+		Status:         DomainReady,
+		ReadinessNote:  "legacy",
+		TruthLabel:     "live-proof",
+		ActiveRevision: "rev-1",
+		Revisions: []PolicyRevision{{
+			ID:           "rev-1",
+			CacheEnabled: false,
+			Label:        "Baseline",
+			CreatedAt:    now(),
+		}},
+	}
+
+	domain, ok := store.GetDomain("zone-legacy")
+	if !ok {
+		t.Fatal("expected legacy domain to exist")
+	}
+	if domain.EdgePlacement.Mode != EdgePlacementAllEligible {
+		t.Fatalf("expected legacy domain to backfill all-eligible placement, got %q", domain.EdgePlacement.Mode)
+	}
+	if len(domain.EdgePlacement.TargetNodeIDs) != len(store.edgeTopology) {
+		t.Fatalf("expected legacy domain to target all topology nodes, got %d", len(domain.EdgePlacement.TargetNodeIDs))
+	}
+}
+
+func TestRecordEdgeApplyPromotesActiveRevisionAfterTargetAcknowledgements(t *testing.T) {
+	store := NewStore(nil, nil)
+	domain, err := store.CreateDomain(CreateDomainInput{Hostname: "rollout-demo.northstarcdn.test", Mode: string(DomainReady)})
+	if err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
+
+	revision, ok := store.PublishPolicy(domain.ID, true)
+	if !ok {
+		t.Fatal("expected publish to succeed")
+	}
+
+	updated, ok := store.GetDomain(domain.ID)
+	if !ok {
+		t.Fatal("expected domain to exist after publish")
+	}
+	if updated.ActiveRevision != revision.ID {
+		t.Fatalf("expected active revision %q, got %q", revision.ID, updated.ActiveRevision)
+	}
+	if updated.AppliedRevision == revision.ID {
+		t.Fatalf("expected applied revision to remain on previous revision before acknowledgements, got %q", updated.AppliedRevision)
+	}
+	if updated.EdgeRollout.PendingNodeCount != len(store.edgeTopology) {
+		t.Fatalf("expected all nodes pending after publish, got %+v", updated.EdgeRollout)
+	}
+
+	for index, node := range store.edgeTopology {
+		err := store.RecordEdgeApply(EdgeApplyAcknowledgement{
+			DomainID:   domain.ID,
+			NodeID:     node.ID,
+			RevisionID: revision.ID,
+			Status:     string(EdgeRolloutApplied),
+			Timestamp:  now(),
+		})
+		if err != nil {
+			t.Fatalf("record edge apply for %s: %v", node.ID, err)
+		}
+		current, ok := store.GetDomain(domain.ID)
+		if !ok {
+			t.Fatal("expected domain to exist during rollout")
+		}
+		if index < len(store.edgeTopology)-1 && current.AppliedRevision == revision.ID {
+			t.Fatalf("expected applied revision to remain pending until all nodes acknowledge, got %q", current.AppliedRevision)
+		}
+	}
+
+	finalDomain, ok := store.GetDomain(domain.ID)
+	if !ok {
+		t.Fatal("expected domain to exist after acknowledgements")
+	}
+	if finalDomain.AppliedRevision != revision.ID {
+		t.Fatalf("expected applied revision to advance to %q, got %q", revision.ID, finalDomain.AppliedRevision)
+	}
+	if finalDomain.EdgeRollout.Status != "applied" {
+		t.Fatalf("expected rollout status applied, got %q", finalDomain.EdgeRollout.Status)
+	}
+}

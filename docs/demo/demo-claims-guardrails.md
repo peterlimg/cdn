@@ -10,6 +10,7 @@
 - Nginx is used as temporary ingress and future TLS termination support, while Rust remains the edge runtime that makes request decisions.
 - Redis-backed counters are used for demo rate limiting. The default walkthrough keeps the rate limit above the quota path so quota remains the primary scripted block, and rate-limited requests still count toward limit windows without consuming quota bytes.
 - Internal control-plane endpoints are demo-internal only. They are not part of the buyer-facing API surface.
+- The local demo can show one zone targeted to multiple named edge nodes with per-node rollout visibility.
 
 ## Forbidden claims
 
@@ -19,11 +20,15 @@
 - Do not imply BTCPay billing or customer balance top-ups are implemented unless that work is actually added later.
 - Do not describe seeded or pre-verified states as if they were discovered live during the demo.
 - Do not describe Nginx as the CDN edge logic layer. It is only ingress and proxy support in this phase.
+- Do not claim that one successful generic proof request means every targeted edge node is already serving traffic.
 
 ## Standard answers
 
 - `How many regions do you have today?`
-  This demo focuses on the control/data-plane loop, not production POP count. Regional rollout is part of the planned architecture, not a claim of current global footprint.
+  This demo focuses on the control/data-plane loop, not production POP count. The named edge nodes in the local stack show placement and rollout shape, not a claim of current global footprint.
+
+- `Does one green proof mean every edge is live?`
+  No. A proof row is evidence for one request on one edge node. The rollout card shows which targeted nodes have acknowledged the active revision across the selected scope.
 
 - `Is this domain really being verified live?`
   The onboarding UX is real product shape. The live traffic portion intentionally uses a pre-verified demo domain so the request-path proof is deterministic during the pitch.
